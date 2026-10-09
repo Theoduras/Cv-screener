@@ -115,3 +115,19 @@ test('robots.txt: our group or *, wildcards, longest rule wins', () => {
   assert.equal(J.robotsAllows('User-agent: *\nDisallow:', '/x'), true, 'empty Disallow allows all');
   assert.equal(J.robotsAllows('', '/x'), true);
 });
+
+test('the job-title filter keeps what the site itself found for that word', async () => {
+  const { jobFilter } = await import('../extension/lib/jobfilter.js');
+  const sales = J.normalise({ title: 'Sales medewerker', company: 'YC', location: 'Utrecht', url: 'https://x.nl/v/1', text: 'Verkoop aan klanten in de winkel.', searchedFor: ['verkoop'] });
+  const host = J.normalise({ title: 'Host', company: 'YC', location: 'Zwolle', url: 'https://x.nl/v/2', text: 'Gastvrij ontvangen.', searchedFor: ['verkoop'] });
+  const gitlab = J.normalise({ title: 'Account Executive', company: 'GitLab', location: 'Remote', url: 'https://x.nl/v/3', text: 'Our recruitment privacy policy… verkoop' });
+  const t = (o, j) => jobFilter(o).test(j);
+  assert.ok(t({ terms: ['verkoop'] }, sales) && t({ terms: ['verkoop'] }, host), 'found by the site searching "verkoop": kept');
+  assert.ok(!t({ terms: ['verkoop'] }, gitlab), 'from a board that was not searched: title only');
+  assert.ok(t({ terms: ['verkoop'], wholeText: true }, gitlab), '"Also search the ad text"');
+  assert.ok(!t({ terms: ['recruiter'] }, sales), 'a different word still filters');
+  assert.ok(t({ terms: ['Sales'] }, sales), 'the title itself still matches');
+  assert.ok(t({ terms: ['verkoop'], city: 'utrecht' }, sales) && !t({ terms: ['verkoop'], city: 'utrecht' }, host), 'city filter');
+  const merged = J.dedupe([sales, { ...sales, searchedFor: ['winkel'] }]);
+  assert.deepEqual(merged[0].searchedFor.sort(), ['verkoop', 'winkel'], 'found by two searches: both remembered');
+});

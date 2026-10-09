@@ -58,13 +58,14 @@ async function readPage(url, src) {
 export async function crawlSource(src, { q = '', city = '' } = {}) {
   if (src.type === 'tab') throw new Error('Open it in a tab, then click “Collect vacancies from this page” in the extension');
   let raw;
-  if (src.type === 'adzuna') raw = parseApi('adzuna', await json(adzunaUrl(src, q, city)));
+  if (src.type === 'adzuna') raw = parseApi('adzuna', await json(adzunaUrl(src, q, city))).map(j => q ? { ...j, searchedFor: q.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) } : j);
   else if (src.type === 'personio') raw = parsePersonio((await fetchText(src.api)).text, new URL(src.url).hostname);
   else if (src.api) raw = parseApi(src.type, await json(src.api), src);
   else {
     // a search URL with {q} runs once per keyword
     const terms = /\{q\}/.test(src.url) ? (q.split(/\s*,\s*/).filter(Boolean).slice(0, 5)) : [''];
-    raw = (await Promise.all((terms.length ? terms : ['']).map(t => readPage(fillUrl(src.url, t, city), src)))).flat();
+    raw = (await Promise.all((terms.length ? terms : ['']).map(async t =>
+      (await readPage(fillUrl(src.url, t, city), src)).map(j => t ? { ...j, searchedFor: [t.toLowerCase()] } : j)))).flat();
   }
   return dedupe(raw.map(j => normalise(j, src)));
 }

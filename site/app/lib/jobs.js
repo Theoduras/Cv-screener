@@ -88,6 +88,7 @@ export function normalise(j, source = {}) {
     id: hashId(url ? canonical(url) : `${title}|${company}`.toLowerCase()),
     title, company, location, url, posted: dateOnly(j.posted),
     text: (j.text || '').slice(0, 20000), source: source.label || '', sourceUrl: source.url || '',
+    ...(j.searchedFor?.length ? { searchedFor: j.searchedFor } : {}),
   };
 }
 
@@ -98,7 +99,9 @@ export function dedupe(jobs) {
     if (!j.title) continue;
     const k2 = `${j.title}|${j.company}`.toLowerCase();
     const prev = seen.get(j.id) || seen.get(k2);
-    const keep = !prev || (j.text || '').length > (prev.text || '').length ? { ...prev, ...j, id: prev?.id || j.id } : prev;
+    let keep = !prev || (j.text || '').length > (prev.text || '').length ? { ...prev, ...j, id: prev?.id || j.id } : prev;
+    const searched = [...new Set([...(prev?.searchedFor || []), ...(j.searchedFor || [])])];
+    if (searched.length) keep = { ...keep, searchedFor: searched };
     seen.set(keep.id, keep); seen.set(k2, keep);
   }
   return [...new Set(seen.values())];

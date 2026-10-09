@@ -1,16 +1,16 @@
 /* Colours are tokens, so dark mode is one block of values. Auto follows the device; the header button can force one. */
-:root{color-scheme:light;--accent-fg:#fff;--ink:#1d1b26;--muted:#6b6880;--line:#e4e1ee;--bg:#faf9fd;--surface:#fff;--surface-2:#f4f2fa;--hover:#f7f5ff;--tint:#0000000d;
-  --accent:#5b3fd1;--accent-text:#5b3fd1;--accent-soft:#f3f0ff;--accent-ink:#3b2a8f;--any-bg:#ece7ff;--any-ink:#4a33b0;
+:root{color-scheme:light;--accent-fg:#fff;--ink:#132322;--muted:#5a6e6c;--line:#d9e5e3;--bg:#f5f9f8;--surface:#ffffff;--surface-2:#ebf3f2;--hover:#edf7f5;--tint:#0000000d;
+  --accent:#0f766e;--accent-text:#0d6d66;--accent-soft:#e2f3f1;--accent-ink:#0a4a45;--any-bg:#dcefed;--any-ink:#0b5a54;
   --low:#1f8a4c;--mid:#b7791f;--high:#c0392b;--ok-bg:#e3f5ea;--ok-ink:#17683a;--bad-bg:#fde7e5;--bad-ink:#a1271c;
-  --warn-bg:#fff7e6;--warn-line:#f2d39b;--warn-ink:#7a5200;--info-bg:#eef6ff;--info-line:#c9defa;--mark:#ffe58a;--badge-bg:#ffffff99;--bar-bg:#1d1b26}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#ecebf3;--muted:#a6a3ba;--line:#363244;--bg:#121018;--surface:#1c1926;--surface-2:#262233;--hover:#262137;--tint:#ffffff14;
-  --accent:#6c52e8;--accent-text:#ac9cff;--accent-soft:#2a2343;--accent-ink:#d3c9ff;--any-bg:#2f2752;--any-ink:#cdc2ff;
+  --warn-bg:#fff7e6;--warn-line:#f2d39b;--warn-ink:#7a5200;--info-bg:#eef6ff;--info-line:#c9defa;--mark:#ffe58a;--badge-bg:#ffffff99;--bar-bg:#132322}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#e3efed;--muted:#97b0ad;--line:#283d3b;--bg:#0b1413;--surface:#13201f;--surface-2:#1a2b29;--hover:#192a28;--tint:#ffffff14;
+  --accent:#138a80;--accent-text:#5fd3c6;--accent-soft:#11312e;--accent-ink:#bdf0ea;--any-bg:#143a36;--any-ink:#a3e6de;
   --low:#23915a;--mid:#b9811f;--high:#d2453a;--ok-bg:#163322;--ok-ink:#86dca8;--bad-bg:#3b1b1a;--bad-ink:#ffa198;
-  --warn-bg:#2f250f;--warn-line:#6a5321;--warn-ink:#f0c66d;--info-bg:#14253a;--info-line:#2b4b70;--mark:#7a6512;--badge-bg:#00000040;--bar-bg:#2d2840}}
-:root[data-theme="dark"]{color-scheme:dark;--ink:#ecebf3;--muted:#a6a3ba;--line:#363244;--bg:#121018;--surface:#1c1926;--surface-2:#262233;--hover:#262137;--tint:#ffffff14;
-  --accent:#6c52e8;--accent-text:#ac9cff;--accent-soft:#2a2343;--accent-ink:#d3c9ff;--any-bg:#2f2752;--any-ink:#cdc2ff;
+  --warn-bg:#2f250f;--warn-line:#6a5321;--warn-ink:#f0c66d;--info-bg:#14253a;--info-line:#2b4b70;--mark:#7a6512;--badge-bg:#00000040;--bar-bg:#1b2e2c}}
+:root[data-theme="dark"]{color-scheme:dark;--ink:#e3efed;--muted:#97b0ad;--line:#283d3b;--bg:#0b1413;--surface:#13201f;--surface-2:#1a2b29;--hover:#192a28;--tint:#ffffff14;
+  --accent:#138a80;--accent-text:#5fd3c6;--accent-soft:#11312e;--accent-ink:#bdf0ea;--any-bg:#143a36;--any-ink:#a3e6de;
   --low:#23915a;--mid:#b9811f;--high:#d2453a;--ok-bg:#163322;--ok-ink:#86dca8;--bad-bg:#3b1b1a;--bad-ink:#ffa198;
-  --warn-bg:#2f250f;--warn-line:#6a5321;--warn-ink:#f0c66d;--info-bg:#14253a;--info-line:#2b4b70;--mark:#7a6512;--badge-bg:#00000040;--bar-bg:#2d2840}
+  --warn-bg:#2f250f;--warn-line:#6a5321;--warn-ink:#f0c66d;--info-bg:#14253a;--info-line:#2b4b70;--mark:#7a6512;--badge-bg:#00000040;--bar-bg:#1b2e2c}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.4 system-ui,sans-serif;color:var(--ink);background:var(--bg)}
 a{color:var(--accent-text)}
@@ -301,3 +301,8 @@ button:active,.btn:active,#tbl tbody tr:active{filter:brightness(.94)}
 /* phones and tablets can't pick a folder */
 @media (pointer:coarse){label.btn:has(#folder){display:none}}
 input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
+.vf-search label.vf-check{flex:0 0 auto;flex-direction:row;align-items:center;gap:6px;font-weight:400;color:var(--ink);padding-bottom:10px}
+.vf-check input{width:18px;height:18px}
+#jobsNone{margin:0 20px 16px;padding:14px 16px;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#jobsNone p{flex:1 1 100%;margin:0 0 4px;font-size:15px}
+@media (max-width:760px){#jobsNone{margin:0 12px 12px}.vf-search label.vf-check{padding-bottom:0}}

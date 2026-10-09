@@ -4,8 +4,9 @@
 <title>CV Screener</title>
 <meta name="description" content="Chrome extension: read, filter and check large piles of CVs for AI writing – locally, alongside any ATS.">
 <style>
-:root{--ink:#1d1b26;--muted:#6b6880;--line:#e4e1ee;--bg:#faf9fd;--card:#fff;--accent:#5b3fd1}
-@media (prefers-color-scheme:dark){:root{--ink:#ecebf3;--muted:#a19eb5;--line:#34303f;--bg:#15131b;--card:#1e1b27;--accent:#8b74ff}}
+:root{--ink:#132322;--muted:#5a6e6c;--line:#d9e5e3;--bg:#f5f9f8;--card:#fff;--accent:#0f766e;--link:#0d6d66}
+@media (prefers-color-scheme:dark){:root{--ink:#e3efed;--muted:#97b0ad;--line:#283d3b;--bg:#0b1413;--card:#13201f;--accent:#138a80;--link:#5fd3c6}}
+a:not(.dl){color:var(--link)}.dl.alt{color:var(--link)!important;border-color:var(--link)!important}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,sans-serif}
 main{max-width:760px;margin:0 auto;padding:32px 16px 64px}
@@ -32,7 +33,7 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
     <p class="small">Everything in the web version, plus pulling candidates straight from your ATS page (Oleeo and others). Chrome or Edge.</p>
   </div>
 </div>
-<p class="small">Version 0.10 (test build)</p>
+<p class="small">Version 0.11 (test build)</p>
 <img src="screenshot.png" alt="The screener: CVs in a table with location, languages, years of experience, skills and AI score">
 
 <h2 id="install">Install the extension (2 minutes)</h2>

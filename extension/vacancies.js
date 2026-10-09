@@ -3,7 +3,7 @@ import * as db from './lib/db.js';
 import { load, store, isExtension, requestHost } from './lib/platform.js';
 import { detectSource, fillUrl, fromCollected, PRESETS } from './lib/jobs.js';
 import { crawlSource } from './lib/crawl.js';
-import { compile, fromWords } from './lib/query.js';
+import { jobFilter } from './lib/jobfilter.js';
 import { report } from './lib/report.js';
 
 const $ = s => document.querySelector(s);
@@ -46,15 +46,24 @@ function renderSources() {
     (sources.some(s => s.type === 'adzuna') ? '' : '<button type="button" class="sugg" data-adzuna="1" title="Free API key from developer.adzuna.com">+ Adzuna (free key)</button>');
 }
 
+const currentFilter = () => jobFilter({ terms: terms(), city: $('#vfCity').value, wholeText: $('#vfText').checked });
+const inSource = () => { const src = $('#vfSource').value; return jobs.filter(j => !j.hidden && (!src || j.sourceUrl === src || j.source === src)); };
 function filteredJobs() {
-  const t = terms(), city = $('#vfCity').value.trim().toLowerCase();
-  const q = t.length ? compile(fromWords({ groups: [t.map(text => ({ text, mode: 'similar', field: 'any' }))] })) : null;
-  const src = $('#vfSource').value;
-  return jobs.filter(j => !j.hidden && (!src || j.sourceUrl === src || j.source === src))
-    // the title, not the whole ad: nearly every ad mentions "recruitment" somewhere in its small print
-    .filter(j => !q || q.test({ name: j.title, text: `${j.title}\n${j.company}`, location: j.location }))
-    .filter(j => !city || `${j.location} ${j.text}`.toLowerCase().includes(city))
+  const f = currentFilter();
+  return inSource().filter(f.test)
     .sort((a, b) => (b.firstSeen || 0) - (a.firstSeen || 0) || (b.posted || '').localeCompare(a.posted || ''));
+}
+
+// "Showing 0 of 21" on its own leaves people stuck: say what hides them, and offer the way back.
+function whyEmpty() {
+  const pool = inSource(), f = currentFilter(), t = terms(), city = $('#vfCity').value.trim();
+  const words = t.map(w => `“${esc(w)}”`).join(' or ');
+  if (t.length && !pool.some(f.byWords)) return `<p>None of the ${pool.length} vacancies has ${words} in the job title.</p>
+    ${$('#vfText').checked ? '' : '<button type="button" class="small" data-fix="text">Search the whole ad text</button>'}
+    <button type="button" class="ghost small" data-fix="words">Show all ${pool.length}</button>`;
+  if (city && !pool.some(f.byCity)) return `<p>None of the vacancies mentions ${esc(city)}.</p><button type="button" class="ghost small" data-fix="city">Show all places</button>`;
+  return `<p>No vacancy matches both ${words} and ${esc(city)}.</p><button type="button" class="ghost small" data-fix="city">Show all places</button>
+    <button type="button" class="ghost small" data-fix="words">Clear the job title</button>`;
 }
 
 export function renderJobs() {
@@ -64,6 +73,8 @@ export function renderJobs() {
   $('#vfSource').innerHTML = '<option value="">All sites</option>' + opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
   $('#vfSource').value = opts.some(([v]) => v === cur) ? cur : '';
   $('#jobsLine').innerHTML = visible.length ? `Showing <strong>${list.length}</strong> of ${visible.length} vacancies` : '';
+  $('#jobsNone').hidden = !(visible.length && !list.length);
+  if (!$('#jobsNone').hidden) $('#jobsNone').innerHTML = whyEmpty();
   $('#jobsEmpty').hidden = visible.length > 0;
   $('#jobsTbl').hidden = !visible.length;
   $('#jobsTbl tbody').innerHTML = list.slice(0, 500).map(j => {
@@ -80,7 +91,10 @@ export function renderJobs() {
 
 async function merge(found, now = Date.now()) {
   const byId = new Map(jobs.map(j => [j.id, j]));
-  const out = found.map(j => { const old = byId.get(j.id); return { ...j, firstSeen: old?.firstSeen || now, lastSeen: now, hidden: old?.hidden || false }; });
+  const out = found.map(j => {
+    const old = byId.get(j.id), searchedFor = [...new Set([...(old?.searchedFor || []), ...(j.searchedFor || [])])];
+    return { ...j, firstSeen: old?.firstSeen || now, lastSeen: now, hidden: old?.hidden || false, ...(searchedFor.length ? { searchedFor } : {}) };
+  });
   await db.jobs.put(out);
   jobs = await db.jobs.all();
   return out.filter(j => j.firstSeen === now).length;
@@ -138,7 +152,16 @@ export async function initVacancies(h) {
 
   $('#vfAddForm').onsubmit = e => { e.preventDefault(); if (addSource($('#vfUrl').value)) { $('#vfUrl').value = ''; setStatus('Added. Press Search now to read it.'); } };
   $('#vfRun').onclick = run;
-  const remember = () => store('jobSearch', { words: $('#vfWords').value, city: $('#vfCity').value });
+  $('#vfText').checked = !!saved.wholeText;
+  const remember = () => store('jobSearch', { words: $('#vfWords').value, city: $('#vfCity').value, wholeText: $('#vfText').checked });
+  $('#vfText').onchange = () => { remember(); renderJobs(); };
+  $('#jobsNone').onclick = e => {
+    const fix = e.target.closest('[data-fix]')?.dataset.fix; if (!fix) return;
+    if (fix === 'text') $('#vfText').checked = true;
+    if (fix === 'words') $('#vfWords').value = '';
+    if (fix === 'city') $('#vfCity').value = '';
+    remember(); renderSources(); renderJobs();
+  };
   for (const id of ['#vfWords', '#vfCity']) $(id).addEventListener('input', () => { remember(); renderSources(); renderJobs(); });
   $('#vfWords').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
   $('#vfSource').onchange = renderJobs;

@@ -97,6 +97,16 @@ if (!live) {
   await page.click('#jobsTbl [data-use]');
   ok(await page.$eval('#vacDialog', d => d.open) && (await page.inputValue('#vacText')).includes('Ervaring met Oleeo'), '"Use as vacancy" fills in the vacancy text');
   await page.click('#vacSave');
+  // a word no title has: say why nothing shows, and offer the way back
+  await page.fill('#vfWords', 'verkoop');
+  ok(await jobRows() === 0 && (await page.textContent('#jobsNone')).includes('None of the 3 vacancies has “verkoop” in the job title'), 'an empty result explains itself');
+  await page.click('#jobsNone [data-fix="words"]');
+  ok(await jobRows() === 3 && await page.inputValue('#vfWords') === '', '"Show all" brings them back');
+  // the same site searched for "verkoop" ({q} in its address): what it returns is kept, whatever the titles say
+  await addSource(`http://127.0.0.1:${srv.address().port}/careers/?q={q}`);
+  await page.fill('#vfWords', 'verkoop');
+  await search();
+  ok(await jobRows() === 3, 'ads a site found for "verkoop" stay visible (the bug from the phone: 0 of 21)');
   await page.fill('#vfWords', '');
 }
 // real sites: a Greenhouse board (read straight from the browser) and YoungCapital (through /api/fetch, robots.txt honoured)
@@ -173,7 +183,7 @@ if (process.argv.includes('--shots')) {
   await m.setInputFiles('#files', [fx('human-nl.docx'), fx('Thomas_Vermeulen_CV.pdf'), fx('Thomas_Vermeulen_Cover_Letter.pdf'), fx('ai-en.txt')]);
   await m.waitForFunction(() => document.querySelectorAll('#tbl tbody tr').length === 3, null, { timeout: 30000 });
   const dark = await m.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  ok(dark === 'rgb(18, 16, 24)', 'Auto follows the phone\'s dark mode: ' + dark);
+  ok(dark === 'rgb(11, 20, 19)', 'Auto follows the phone\'s dark mode: ' + dark);
   const overflow = async () => m.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   ok(await overflow() <= 0, 'no sideways scrolling on a phone (candidates)');
   ok(await m.$eval('#tbl thead', t => getComputedStyle(t).display) === 'none' && await m.$eval('#tbl tbody tr', t => getComputedStyle(t).display) === 'block', 'candidates are cards, not a table');
