@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "CV Screener",
+  "version": "0.1.0",
+  "description": "Lees, filter en controleer grote aantallen cv's – lokaal, naast elk ATS (Oleeo e.a.).",
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting"],
+  "action": { "default_popup": "popup.html", "default_title": "CV Screener", "default_icon": "icon.png" },
+  "icons": { "128": "icon.png" },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
