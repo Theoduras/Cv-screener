@@ -9,6 +9,8 @@ Screen large volumes of CVs on top of any ATS (Oleeo and others), as a **web pag
 - **Filters and sorts** on every one of those fields, and exports the filtered list to CSV.
 - **Guided search** for non-technical users (Must have / At least one of / Leave out boxes; click a word for exact, starts-with or field-only matching; several either/or lists; a plain-English summary; quick-add skills, plain dropdowns, a helpful no-results message) plus an advanced syntax (`skill:python years:>=5 -intern`), saved searches and highlighted matches.
 - **Captures** a candidate straight from the open ATS page, using the recruiter's own session.
+- **Lists and shortlists**: tick candidates (shift-click for a range), add them to a named list or to a vacancy, filter on a list, export the ticked ones.
+- **Finds vacancies** on careers pages, job-board search results, RSS feeds and Greenhouse / Lever / SmartRecruiters / Workable / Recruitee / Personio boards, from schema.org JobPosting data or the board APIs. LinkedIn, Indeed and boards that forbid crawlers are never crawled: the extension's *Collect vacancies from this page* reads the tab the recruiter has open. The web version reads other sites through `/api/fetch`, which refuses private addresses (also after redirects and through DNS), honours robots.txt, and has size, type and rate limits.
 - **Runs locally.** CVs never leave the browser, and there is no API key or cost. Only anonymous error reports are sent; they become GitHub issues in this repo.
 
 ![Overview](docs/screenshots/1-overview.png)

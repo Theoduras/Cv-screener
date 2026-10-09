@@ -19,7 +19,7 @@ export const version = () => isExtension ? chrome.runtime.getManifest().version 
 
 // Extension only: captures from an ATS tab arrive through storage, and the popup can ask this tab to come forward.
 export function onInbox(fn) {
-  if (isExtension) chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.inbox?.newValue?.length) fn(); });
+  if (isExtension) chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && (ch.inbox?.newValue?.length || ch.jobInbox?.newValue?.length)) fn(); });
 }
 export function onFocusRequest() {
   if (!isExtension) return;
@@ -32,4 +32,18 @@ export function onFocusRequest() {
     });
     return true;
   });
+}
+
+// Extension only: reading a job site needs the recruiter's OK for that site, asked once per site.
+// The web version can't hold such permissions and goes through /api/fetch instead.
+const originOf = url => { try { return new URL(url).origin + '/*'; } catch { return null; } };
+export async function hasHost(url) {
+  const o = originOf(url);
+  return !!(isExtension && o && chrome.permissions?.contains && await chrome.permissions.contains({ origins: [o] }).catch(() => false));
+}
+// Must be called straight from a click. Never waits on the answer: the source works through the proxy meanwhile.
+export function requestHost(urls) {
+  if (!isExtension || !chrome.permissions?.request) return;
+  const origins = [...new Set([].concat(urls).map(originOf).filter(Boolean))];
+  if (origins.length) chrome.permissions.request({ origins }).catch(() => {});
 }

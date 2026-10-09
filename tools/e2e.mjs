@@ -25,6 +25,7 @@ const pdfPath = path.join(tmp, 'john-ai.pdf');
 
 // a fake ATS page with a CV link, served over http
 const srv = createServer((req, res) => {
+  if (req.url.startsWith('/jobs/')) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(readFileSync(path.join(root, 'test/fixtures', req.url))); }
   if (req.url === '/cv.pdf') { res.writeHead(200, { 'Content-Type': 'application/pdf' }); return res.end(readFileSync(pdfPath)); }
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end('<title>REQ-42 Kandidaat</title><h1>Kandidaat</h1><a href="/cv.pdf">CV downloaden</a>');
@@ -153,9 +154,60 @@ if (!res.err) {
   await app.fill('#vacText', readFileSync(fx('ai-en.txt'), 'utf8').split('PROFESSIONAL EXPERIENCE')[0]);
   await app.click('#vacSave');
   await app.waitForTimeout(300);
-  const toolScores = await app.$$eval('tbody tr', trs => trs.map(t => t.children[7]?.innerText));
+  const toolScores = await app.$$eval('tbody tr', trs => trs.map(t => t.children[8]?.innerText));
   ok(toolScores.some(x => +x >= 55), 'copied vacancy text raises the tool score: ' + toolScores.join(','));
 } else console.log('skip  capture (needs host access in headless):', res.err);
+
+// the candidate panel: × in the top-right corner, Esc closes it
+const rowsNow = () => app.$$eval('#tbl tbody tr', t => t.length);
+await app.click('#tbl tbody tr:first-child td:nth-child(2)');
+const pane = await app.$eval('#drawer', d => d.getBoundingClientRect().toJSON()), x = await app.$eval('#closeDrawer', b => b.getBoundingClientRect().toJSON());
+ok(pane.right - x.right < 30 && x.top - pane.top < 30, `× sits in the top-right corner (${Math.round(pane.right - x.right)}px from the right, ${Math.round(x.top - pane.top)}px from the top)`);
+await app.keyboard.press('Escape');
+ok(await app.$eval('#drawer', d => d.hidden), 'Esc closes the candidate panel');
+
+// select two (shift-click a range), put them on a vacancy, then one of them on a named list
+await app.click('#tbl tbody tr:nth-child(1) td.sel');
+await app.click('#tbl tbody tr:nth-child(2) td.sel', { modifiers: ['Shift'] });
+ok((await app.textContent('#selCount')).startsWith('2 selected'), 'checkbox + shift-click selects a range');
+await app.click('#selVac');
+await app.selectOption('#addVac', '__new');
+await app.fill('#addVacName', 'REQ-77 Recruiter');
+await app.click('#addSave');
+const chip = await app.waitForFunction(() => document.querySelector('#lists').textContent.includes('Shortlist – REQ-77 Recruiter'), null, { timeout: 3000 }).catch(() => null);
+ok(chip, 'list on the vacancy appears as a chip');
+ok(await app.$eval('#selBar', b => b.hidden), 'selection cleared after adding');
+await app.click('.list-apply');
+ok(await rowsNow() === 2, 'clicking the list chip shows only its candidates');
+await app.click('#tbl tbody tr:first-child td:nth-child(2)');
+await app.click('#drawerList');
+await app.selectOption('#addList', '__new');
+await app.fill('#addName', 'Top picks');
+await app.click('#addSave');
+await app.waitForFunction(() => document.querySelector('.on-lists')?.textContent.includes('Top picks'), null, { timeout: 3000 }).catch(() => {});
+ok((await app.textContent('.on-lists')).includes('Top picks'), 'panel shows the lists a candidate is on');
+await app.keyboard.press('Escape');
+await app.selectOption('#flist', { label: 'Top picks (1)' });
+ok(await rowsNow() === 1, 'list filter');
+await app.selectOption('#flist', '');
+
+// "Collect vacancies from this page" on LinkedIn- and Indeed-like result pages (run the way the popup does)
+const jobsBase = `http://localhost:${srv.address().port}/jobs/`;
+for (const f of ['linkedin.html', 'indeed.html']) {
+  const tab = await ctx.newPage();
+  await tab.goto(jobsBase + f);
+  const got = await tab.evaluate(readFileSync(path.join(ext, 'collect.js'), 'utf8'));
+  await app.evaluate(async r => { const { jobInbox = [] } = await chrome.storage.local.get('jobInbox'); await chrome.storage.local.set({ jobInbox: [...jobInbox, { ...r, at: Date.now() }] }); }, got);
+  await tab.close();
+}
+await app.waitForFunction(() => document.querySelectorAll('#jobsTbl tbody tr').length === 4, null, { timeout: 10000 });
+ok(!(await app.$eval('#tab-vacs', t => t.hidden)), 'collected vacancies open the Vacancies tab');
+const jobsText = await app.textContent('#jobsTbl tbody');
+ok(['Corporate Recruiter', 'Bol', 'Junior Recruiter', 'Randstad', 'Amsterdam-Zuidoost'].every(t => jobsText.includes(t)), 'job cards read: title, company, location');
+ok(jobsText.includes('you hire engineers'), 'the open LinkedIn job brings its text');
+await app.fill('#vfWords', 'consultant');
+ok(await app.$$eval('#jobsTbl tbody tr', t => t.length) === 1, 'keyword filter on vacancies');
+await app.fill('#vfWords', '');
 
 ok(!errors.length, 'no page errors / reports: ' + errors.join(' | '));
 await ctx.close(); srv.close();

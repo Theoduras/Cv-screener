@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workzag-jobs><position><id>123</id><subcompany>Acme NL</subcompany><office>Eindhoven</office><name>Backend Developer</name><createdAt>2026-09-30T10:00:00+00:00</createdAt>
+<jobDescriptions><jobDescription><name>Over de rol</name><value><![CDATA[<p>Go en Postgres.</p>]]></value></jobDescription></jobDescriptions></position></workzag-jobs>

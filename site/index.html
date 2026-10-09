@@ -32,7 +32,7 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
     <p class="small">Everything in the web version, plus pulling candidates straight from your ATS page (Oleeo and others). Chrome or Edge.</p>
   </div>
 </div>
-<p class="small">Version 0.8 (test build)</p>
+<p class="small">Version 0.9 (test build)</p>
 <img src="screenshot.png" alt="The screener: CVs in a table with location, languages, years of experience, skills and AI score">
 
 <h2 id="install">Install the extension (2 minutes)</h2>
@@ -77,6 +77,15 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
 <h2>Cover letters too</h2>
 <p>Drop cover letters together with the CVs. Each one is recognised and attached to the right candidate automatically (by email, name, ATS page or file name), and a 📝 shows who has one. Search covers both, or only the letter if you choose that. Both checks run on the letter as well. The tool check also spots the same letter sent to several vacancies with only the names swapped, letters shared between applicants, and letters addressed to a different job.</p>
 <img src="cover-letter.png" alt="A candidate with separate AI and tool scores for the CV and the cover letter">
+
+<h2>Shortlists: select candidates, put them on a vacancy</h2>
+<p>Tick candidates (shift-click ticks a whole range) and use <strong>📋 Add to list</strong> or <strong>📄 Add to vacancy</strong> in the bar that appears. A list shows as a chip; click it to see only those candidates, or pick it under <em>📋 List</em>. Export the ticked ones with <strong>Export selected</strong>. Open a candidate to see which lists they are on. <kbd>Esc</kbd> or the × in the corner closes the candidate again.</p>
+<img src="select-candidates.png" alt="Three candidates ticked, with the Add to list and Add to vacancy bar">
+
+<h2>Find vacancies</h2>
+<p>The <strong>💼 Find vacancies</strong> tab collects job ads from sites you choose: your own or a client's careers page, a job board's search results, an RSS feed, or a Greenhouse, Lever, SmartRecruiters, Workable, Recruitee or Personio board. Paste the link, press <strong>Search now</strong>, and filter on job title and city. <strong>Use as vacancy</strong> turns an ad into the vacancy text, so CVs that copy it are flagged; you can also put a shortlist of candidates on a found ad.</p>
+<p>LinkedIn, Indeed and several big Dutch job boards (Werk.nl, Nationale Vacaturebank, Werkzoeken.nl, StepStone, Intermediair, Glassdoor, Jobbird) forbid automatic reading, and doing it anyway gets accounts blocked. For those: open the search in a tab with <strong>Open ↗</strong> and click <strong>Collect vacancies from this page</strong> in the extension. It reads only what you already see. Every other site is read politely: it honours the site's robots.txt and says who it is.</p>
+<img src="find-vacancies.png" alt="The Find vacancies tab with sites, a job title search and the ads found">
 
 <h2>Typos are fine</h2>
 <p>Searching for <em>management</em> also finds a CV that says <em>managment</em>, and a typo in what you type is forgiven. If a word finds nothing, the screener suggests the closest word: <em>Did you mean python?</em></p>

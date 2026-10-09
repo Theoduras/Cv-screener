@@ -81,9 +81,34 @@ Drop cover letters together with the CVs. You don't need to sort them first.
   - 📨 **Tool** looks for the same letter sent to several of your vacancies with only the names changed, nearly the same letter as other applicants (a template or a tool), sentences copied from the vacancy, and a letter addressed to a job or company your vacancy never mentions (needs the 📄 Vacancy text).
 - The table shows the higher score of the CV and the letter, and hovering tells you which document it came from.
 
+**Lists and shortlists**
+- Tick the box in front of a candidate. Shift-click a second box to tick everything in between, and use the box in the header to tick everyone shown.
+- In the bar at the bottom, choose:
+  - **📋 Add to list:** an existing list, or a new one with a name;
+  - **📄 Add to vacancy:** one of your vacancies/reqs, an ad you found under *Find vacancies*, or a new one. This makes a *Shortlist – …* for that vacancy.
+- A list appears as a chip under the search boxes. Click it to see only those candidates, or pick it under **📋 List**. Clicking × deletes the list, never the candidates.
+- **Export selected** downloads only the ticked candidates. The CSV has a `lists` column.
+- Opening a candidate shows the lists they are on. **Esc** or the **×** in the top-right corner closes it again.
+
+**Find vacancies**
+- **Add a site.** Open the **💼 Find vacancies** tab and paste a link:
+  - a company careers page;
+  - a job board's search results;
+  - an RSS feed;
+  - a board on Greenhouse, Lever, SmartRecruiters, Workable, Recruitee or Personio.
+
+  You can also click a suggestion. A link with `{q}` in it is filled with your job title words, and `{city}` with the city.
+- **Search.** Press **Search now**, then filter on **job title** (a comma between alternatives) and **city**. Ads that are new since your last search are marked *new*. The search runs again by itself when you open the tab and the last one was more than a day ago.
+- **Use as vacancy** makes the ad the 📄 Vacancy text, so the 📨 check can see which CVs copy it. You can also put a shortlist of candidates on a found ad; the ad then shows 📋 and the number of candidates.
+- **LinkedIn, Indeed and big job boards.** LinkedIn, Indeed, Werk.nl, Nationale Vacaturebank, Werkzoeken.nl, StepStone, Intermediair, Glassdoor and Jobbird forbid automatic reading, and doing it anyway gets accounts blocked. For those:
+  1. Click **Open ↗**. Do your search there as usual.
+  2. Click the CV Screener icon → **Collect vacancies from this page**. It reads only the ads you can see, plus the full text of the one you have open.
+- **How sites are read.** In the web version, sites are read through a small helper on our server, because a web page can't read other sites itself. It only fetches public pages and honours each site's robots.txt. A site that asks not to be read shows ⚠ with the reason. The extension reads sites itself and asks Chrome's permission once per site.
+
 ## 3. Privacy
 
-- CVs and candidate details are never sent anywhere. They exist only in this browser.
+- CVs and candidate details are never sent anywhere. They exist only in this browser. Lists and found vacancies are stored there too.
+- Finding vacancies fetches public job pages: in the web version through our helper, which sees only the address of the job page, never your CVs.
 - If something breaks, **only the error message** is sent to the developer, anonymously. No names, no file names, no CV text.
 - **Delete all CVs** at the bottom of the screen clears everything.
 

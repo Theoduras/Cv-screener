@@ -8,10 +8,12 @@ import { docKind, linkLetters } from './lib/doctype.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
 import { compile, highlight, fromWords, plainLabel, termCode, suggest } from './lib/query.js';
 import { SKILLS } from './lib/dict.js';
+import { initVacancies, drainJobInbox, onShow as showVacancies, renderJobs, savedJobs, jobById } from './vacancies.js';
 
 installGlobalHandlers();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let selected = new Set(), lastSel = null, shownIds = [], lists = [];
 let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], vacancies = {}, words = { all: [], groups: [[]], none: [] };
 
 const uid = () => crypto.randomUUID();
@@ -125,6 +127,7 @@ async function ingest(files) {
 }
 
 async function drainInbox() {
+  if (await drainJobInbox()) showTab('vacs');
   const inbox = await load('inbox', []);
   if (!inbox.length) return;
   await store('inbox', []);
@@ -149,7 +152,7 @@ async function drainInbox() {
 const F = () => ({
   loc: $('#floc').value.trim().toLowerCase(), lang: $('#flang').value,
   min: $('#fmin').value === '' ? null : +$('#fmin').value, max: $('#fmax').value === '' ? null : +$('#fmax').value,
-  ai: $('#fai').value, tag: $('#ftag').value, letter: $('#fletter').value,
+  ai: $('#fai').value, tag: $('#ftag').value, letter: $('#fletter').value, list: $('#flist').value,
 });
 
 function filtered() {
@@ -169,6 +172,7 @@ function filtered() {
       if (f.ai === 'human' && (r.aiRes.level !== 'low' || r.tailRes.level !== 'low')) return false;
     }
     if (f.tag && r.tag !== f.tag) return false;
+    if (f.list && !lists.find(l => l.id === f.list)?.members.includes(r.id)) return false;
     const hasLetter = r.letterOnly || r.letters?.length > 0;
     if (f.letter === 'has' && !hasLetter) return false;
     if (f.letter === 'missing' && hasLetter) return false;
@@ -191,10 +195,13 @@ function render() {
   $('#matchedTh').hidden = !q;
   const matchedCell = r => q ? `<td class="matched">${query.matched(r).map(l => `<span class="hit">${esc(plainLabel(l))} ✓</span>`).join(' ')}</td>` : '';
   $('#empty').hidden = rows.length > 0;
+  shownIds = list.map(r => r.id);
+  const sel = r => `<td class="sel"><input type="checkbox" class="rowsel" data-id="${r.id}"${selected.has(r.id) ? ' checked' : ''} aria-label="Select ${esc(r.name || r.fileName)}"></td>`;
+  const onLists = r => listsOf(r.id).map(l => ` <span class="list-tag" title="On the list ${esc(l.name)}">📋 ${esc(l.name)}</span>`).join('');
   $('#tbl tbody').innerHTML = list.map(r => r.error ? `
-    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
-    <tr data-id="${r.id}">
-      <td>${esc(r.name || '(unknown)')}${r.letters.length ? ' <span class="doc-mark" title="Has a cover letter">📝</span>' : ''}${r.letterOnly ? ' <span class="doc-only">cover letter only</span>' : ''}<div class="note">${esc(r.email)}</div></td>
+    <tr class="err" data-id="${r.id}">${sel(r)}<td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
+    <tr data-id="${r.id}"${selected.has(r.id) ? ' class="is-sel"' : ''}>${sel(r)}
+      <td>${esc(r.name || '(unknown)')}${r.letters.length ? ' <span class="doc-mark" title="Has a cover letter">📝</span>' : ''}${r.letterOnly ? ' <span class="doc-only">cover letter only</span>' : ''}${onLists(r)}<div class="note">${esc(r.email)}</div></td>
       ${matchedCell(r)}
       <td>${esc(r.location)}</td>
       <td>${esc((r.languages.length ? r.languages : [r.cvLanguage]).filter(Boolean).join(', '))}</td>
@@ -210,6 +217,7 @@ function render() {
     th.classList.toggle('sorted', th.dataset.k === sortKey);
     th.classList.toggle('asc', th.dataset.k === sortKey && sortAsc);
   });
+  renderSelection();
 }
 
 function fillSelect(sel, values, first) {
@@ -220,8 +228,10 @@ function fillSelect(sel, values, first) {
 
 async function refresh() {
   rows = withDupes(await db.all());
+  await pruneLists();
   fillSelect($('#flang'), [...new Set(rows.flatMap(r => [...(r.languages || []), r.cvLanguage]).filter(Boolean))].sort(), 'Any language');
   fillSelect($('#ftag'), [...new Set(rows.map(r => r.tag).filter(Boolean))].sort(), 'All vacancies');
+  renderLists();
   render();
 }
 
@@ -250,12 +260,15 @@ function openDrawer(id) {
     ${verdicts(docs)}
     <p class="note">These are indications, not proof. Use them to prioritise, never to reject on their own – a candidate may tailor their own CV or letter to your vacancy, which is a good thing.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    <p class="on-lists">📋 ${listsOf(r.id).length ? 'On ' + listsOf(r.id).map(l => `<b>${esc(l.name)}</b>`).join(', ') : 'Not on a list yet'} · <button type="button" class="link small" id="drawerList">Add to a list</button> · <button type="button" class="link small" id="drawerVac">Add to a vacancy</button></p>
     ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).map(plainLabel).join(', ') || 'none')}</p>` : ''}
     <div class="doc-tabs" role="tablist">${docs.map((d, i) => `<button type="button" role="tab" class="doc-tab${i === 0 ? ' on' : ''}" data-doc="${i}">${d.label}</button>`).join('')}</div>
     ${docs.map((d, i) => `<div class="doc-pane" data-doc="${i}"${i ? ' hidden' : ''}>
       <p class="note">${esc(d.doc.fileName || '')} · <button type="button" class="link small kind-flip" data-id="${d.doc.id}" data-kind="${d.kind === 'letter' ? 'cv' : 'letter'}">${d.kind === 'letter' ? 'This is a CV, not a cover letter' : 'This is a cover letter, not a CV'}</button></p>
       <pre>${highlight(esc(d.doc.text), query.terms, { ...r, text: d.doc.text, letterText: '' })}</pre></div>`).join('')}`}
     <button class="danger" id="delOne">Delete this candidate${r.letters?.length ? ' and their cover letter' : ''}</button>`;
+  $('#drawerList')?.addEventListener('click', () => openAdd('list', [r.id]));
+  $('#drawerVac')?.addEventListener('click', () => openAdd('vacancy', [r.id]));
   $('#delOne').onclick = async () => { for (const d of [r, ...(r.letters || [])]) await db.remove(d.id); $('#drawer').hidden = true; refresh(); };
   $('#drawerBody').querySelectorAll('.doc-tab').forEach(t => t.onclick = () => {
     $('#drawerBody').querySelectorAll('.doc-tab').forEach(x => x.classList.toggle('on', x === t));
@@ -268,13 +281,15 @@ function openDrawer(id) {
     $('#drawer').hidden = true;
     await refresh();
   });
+  $('#drawerBody').dataset.id = id;
   $('#drawer').hidden = false;
 }
 
-function exportCsv() {
-  const cols = ['name', 'email', 'phone', 'linkedin', 'location', 'languages', 'cvLanguage', 'years', 'education', 'skills', 'ai', 'aiReasons', 'tool', 'toolReasons', 'has_cover_letter', 'letter_ai', 'letter_tool', 'tag', 'fileName', 'addedAt'];
+function exportCsv(list = filtered()) {
+  const cols = ['name', 'email', 'phone', 'linkedin', 'location', 'languages', 'cvLanguage', 'years', 'education', 'skills', 'ai', 'aiReasons', 'tool', 'toolReasons', 'has_cover_letter', 'letter_ai', 'letter_tool', 'tag', 'lists', 'fileName', 'addedAt'];
   const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const lines = filtered().map(r => cols.map(c => cell(
+  const lines = list.map(r => cols.map(c => cell(
+    c === 'lists' ? listsOf(r.id).map(l => l.name).join(' | ') :
     c === 'ai' ? r.aiRes?.score : c === 'aiReasons' ? r.aiRes?.reasons.join(' | ') :
     c === 'tool' ? r.tailRes?.score : c === 'toolReasons' ? r.tailRes?.reasons.join(' | ') :
     c === 'has_cover_letter' ? (r.letterOnly || r.letters?.length ? 'yes' : 'no') :
@@ -469,7 +484,13 @@ $('#tagEditor').addEventListener('click', e => {
 });
 $('#te-done').onclick = closeEditor;
 $('#te-delete').onclick = () => { if (editing) removeWord(editing.kind, editing.i); closeEditor(); };
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditor(); });
+// Esc closes the innermost thing: the word editor, then a dialog (which does that itself), then the candidate panel.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('#tagEditor').hidden) return closeEditor();
+  if (document.querySelector('dialog[open]')) return;
+  if (!$('#drawer').hidden) closeDrawer();
+});
 
 document.addEventListener('click', e => {
   const edit = e.target.closest('.wtext');
@@ -479,7 +500,7 @@ document.addEventListener('click', e => {
   if (del) { removeWord(del.dataset.kind, +del.dataset.i); return; }
   const g = e.target.closest('.del-group');
   if (g) { words.groups.splice(+g.dataset.g, 1); render(); return; }
-  const s = e.target.closest('.sugg');
+  const s = e.target.closest('.sugg[data-word]');
   if (s) { addWords('all', s.dataset.word); return; }
   const dym = e.target.closest('.dym');
   if (dym) { list(dym.dataset.kind)[+dym.dataset.i].text = dym.dataset.word; render(); }
@@ -493,9 +514,14 @@ document.querySelector('thead').onclick = e => {
   const k = e.target.dataset.k; if (!k) return;
   sortAsc = sortKey === k ? !sortAsc : k === 'name' || k === 'location'; sortKey = k; render();
 };
-$('#tbl tbody').onclick = e => { const tr = e.target.closest('tr'); if (tr) openDrawer(tr.dataset.id); };
-$('#closeDrawer').onclick = () => { $('#drawer').hidden = true; };
-$('#exportBtn').onclick = exportCsv;
+$('#tbl tbody').onclick = e => {
+  const cell = e.target.closest('td.sel');
+  if (cell) { const cb = cell.querySelector('input'); if (e.target !== cb) cb.checked = !cb.checked; select(cb.dataset.id, cb.checked, e.shiftKey); return; }
+  const tr = e.target.closest('tr'); if (tr) openDrawer(tr.dataset.id);
+};
+const closeDrawer = () => { $('#drawer').hidden = true; };
+$('#closeDrawer').onclick = closeDrawer;
+$('#exportBtn').onclick = () => exportCsv();
 $('#clearAll').onclick = async () => { if (confirm('Delete all CVs from this browser?')) { await db.clear(); refresh(); } };
 $('#reportBtn').onclick = async () => {
   const comment = prompt('What went wrong? (please do not include candidate details)');
@@ -514,8 +540,137 @@ $('#saveSkills').onclick = async () => {
 onFocusRequest();
 onInbox(drainInbox);
 
+// ---------- selecting candidates, and lists ----------
+// A list is a named group of candidates, optionally put on a vacancy (a req tag, or an ad from "Find vacancies").
+const listsOf = id => lists.filter(l => l.members.includes(id));
+const vacLabel = key => key?.startsWith('job:') ? (j => j ? `${j.title}${j.company ? ' – ' + j.company : ''}` : 'a saved vacancy')(jobById(key.slice(4))) : key?.slice(4) || '';
+const saveLists = () => store('lists', lists);
+
+function select(id, on, range) {
+  const ids = range && lastSel && shownIds.includes(lastSel) ? shownIds.slice(Math.min(shownIds.indexOf(lastSel), shownIds.indexOf(id)), Math.max(shownIds.indexOf(lastSel), shownIds.indexOf(id)) + 1) : [id];
+  for (const x of ids) on ? selected.add(x) : selected.delete(x);
+  lastSel = id;
+  renderSelection();
+}
+function renderSelection() {
+  document.querySelectorAll('.rowsel').forEach(cb => { cb.checked = selected.has(cb.dataset.id); cb.closest('tr').classList.toggle('is-sel', cb.checked); });
+  const shownSel = shownIds.filter(id => selected.has(id)).length;
+  $('#selAll').checked = shownIds.length > 0 && shownSel === shownIds.length;
+  $('#selAll').indeterminate = shownSel > 0 && shownSel < shownIds.length;
+  $('#selBar').hidden = !selected.size;
+  $('#selCount').innerHTML = `<b>${selected.size}</b> selected${selected.size > shownSel ? ` <span class="note">(${selected.size - shownSel} not in this view)</span>` : ''}`;
+}
+$('#selAll').onclick = e => { e.stopPropagation(); for (const id of shownIds) e.target.checked ? selected.add(id) : selected.delete(id); renderSelection(); };
+$('#selClear').onclick = () => { selected.clear(); renderSelection(); };
+$('#selExport').onclick = () => exportCsv(rows.filter(r => selected.has(r.id)));
+$('#selList').onclick = () => openAdd('list', [...selected]);
+$('#selVac').onclick = () => openAdd('vacancy', [...selected]);
+
+function renderLists() {
+  $('#listsWrap').hidden = !lists.length;
+  $('#lists').innerHTML = lists.map(l => `<span class="chip list-chip"><button class="list-apply" data-id="${l.id}" title="Show only this list">📋 ${esc(l.name)} <span class="cnt">${l.members.length}</span></button><button class="list-del" data-id="${l.id}" aria-label="Delete the list ${esc(l.name)}">×</button></span>`).join('');
+  const cur = $('#flist').value;
+  $('#flist').innerHTML = '<option value="">All candidates</option>' + lists.map(l => `<option value="${l.id}">${esc(l.name)} (${l.members.length})</option>`).join('');
+  $('#flist').value = lists.some(l => l.id === cur) ? cur : '';
+  renderJobs();
+}
+$('#lists').onclick = async e => {
+  const del = e.target.closest('.list-del'), app = e.target.closest('.list-apply');
+  if (del) {
+    const l = lists.find(x => x.id === del.dataset.id);
+    if (!confirm(`Delete the list "${l.name}"? The candidates themselves stay.`)) return;
+    lists = lists.filter(x => x !== l); await saveLists(); renderLists(); render(); return;
+  }
+  if (app) { $('#flist').value = $('#flist').value === app.dataset.id ? '' : app.dataset.id; render(); }
+};
+// candidates deleted since: drop them from every list
+async function pruneLists() {
+  const ids = new Set(rows.map(r => r.id));
+  let changed = false;
+  for (const l of lists) { const keep = l.members.filter(id => ids.has(id)); if (keep.length !== l.members.length) { l.members = keep; changed = true; } }
+  for (const id of selected) if (!ids.has(id)) selected.delete(id);
+  if (changed) await saveLists();
+}
+
+let adding = null;
+function openAdd(mode, ids) {
+  if (!ids.length) return;
+  adding = { mode, ids };
+  const n = ids.length, who = n === 1 ? (rows.find(r => r.id === ids[0])?.name || '1 candidate') : `${n} candidates`;
+  $('#addTitle').textContent = mode === 'list' ? `Add ${who} to a list` : `Add ${who} to a vacancy`;
+  $('#addList').innerHTML = lists.map(l => `<option value="${l.id}">${esc(l.name)} (${l.members.length})</option>`).join('') + '<option value="__new">＋ New list…</option>';
+  $('#addList').value = lists.length ? lists[lists.length - 1].id : '__new';
+  const tags = [...new Set([...rows.map(r => r.tag), ...Object.keys(vacancies)].filter(Boolean))].sort();
+  const ads = savedJobs().slice(0, 300);
+  $('#addVac').innerHTML = (mode === 'list' ? '<option value="">— not on a vacancy —</option>' : '') +
+    (tags.length ? `<optgroup label="Your vacancies / reqs">${tags.map(t => `<option value="tag:${esc(t)}">${esc(t)}</option>`).join('')}</optgroup>` : '') +
+    (ads.length ? `<optgroup label="Found vacancies">${ads.map(j => `<option value="job:${j.id}">${esc(j.title)}${j.company ? ' – ' + esc(j.company) : ''}</option>`).join('')}</optgroup>` : '') +
+    '<option value="__new">＋ New vacancy / req…</option>';
+  const fromTag = $('#ftag').value || $('#tagInput').value.trim();
+  $('#addVac').value = mode === 'vacancy' ? (fromTag && tags.includes(fromTag) ? 'tag:' + fromTag : tags.length || ads.length ? $('#addVac').options[0].value : '__new') : '';
+  $('#addName').value = ''; $('#addVacName').value = '';
+  syncAdd();
+  $('#addDialog').showModal();
+}
+function syncAdd() {
+  const list = adding?.mode === 'list';
+  $('#addListWrap').hidden = !list;
+  $('#addNameWrap').hidden = !list || $('#addList').value !== '__new';
+  $('#addVacLabel').textContent = list ? 'Put this list on a vacancy (optional)' : 'Vacancy';
+  $('#addVacNameWrap').hidden = $('#addVac').value !== '__new';
+}
+$('#addList').onchange = syncAdd;
+$('#addVac').onchange = syncAdd;
+$('#addDialog').onclose = async () => {
+  if ($('#addDialog').returnValue !== 'save' || !adding) return;
+  let vac = $('#addVac').value;
+  if (vac === '__new') vac = $('#addVacName').value.trim() ? 'tag:' + $('#addVacName').value.trim() : '';
+  let list;
+  if (adding.mode === 'list') {
+    list = lists.find(l => l.id === $('#addList').value);
+    if (!list) list = { id: uid(), name: $('#addName').value.trim() || `List ${lists.length + 1}`, members: [], created: Date.now() };
+    if (vac) list.vacancy = vac;
+  } else {
+    if (!vac) return;
+    list = lists.find(l => l.vacancy === vac && l.auto) || { id: uid(), name: `Shortlist – ${vacLabel(vac)}`.slice(0, 80), vacancy: vac, auto: true, members: [], created: Date.now() };
+  }
+  if (!lists.includes(list)) lists.push(list);
+  const before = list.members.length;
+  list.members = [...new Set([...list.members, ...adding.ids])];
+  if (adding.ids.length > 1 || selected.has(adding.ids[0])) selected.clear();
+  toast(`${list.members.length - before} added to “${list.name}”${list.vacancy ? ` (vacancy: ${vacLabel(list.vacancy)})` : ''}.`);
+  adding = null;
+  renderLists(); render();
+  if (!$('#drawer').hidden) openDrawer($('#drawerBody').dataset.id);
+  await saveLists();
+};
+function toast(msg) {
+  const t = document.getElementById('toast') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'toast', role: 'status' }));
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.hidden = true; }, 3500);
+}
+
+// ---------- tabs ----------
+function showTab(name) {
+  document.querySelectorAll('#tabs .tab').forEach(t => { t.classList.toggle('on', t.dataset.tab === name); t.setAttribute('aria-selected', t.dataset.tab === name); });
+  $('#tab-cands').hidden = name !== 'cands';
+  $('#tab-vacs').hidden = name !== 'vacs';
+  closeDrawer();
+  if (name === 'vacs') showVacancies();
+}
+$('#tabs').onclick = e => { const t = e.target.closest('.tab'); if (t) showTab(t.dataset.tab); };
+
+// a found ad becomes the vacancy text for a req, which the 📨 copy check compares CVs against
+function useAsVacancy(job) {
+  if (!job) return;
+  $('#vacTags').innerHTML = [...new Set([...rows.map(r => r.tag), ...Object.keys(vacancies)].filter(Boolean))].map(t => `<option value="${esc(t)}">`).join('');
+  $('#vacTag').value = `${job.title}${job.company ? ' – ' + job.company : ''}`.slice(0, 80);
+  $('#vacText').value = job.text || `${job.title}\n${job.company}\n${job.location}`;
+  $('#vacDialog').showModal();
+}
+
 // ---------- saved searches ----------
-const FILTER_IDS = ['fq', 'floc', 'flang', 'fmin', 'fmax', 'fai', 'ftag'];
+const FILTER_IDS = ['fq', 'floc', 'flang', 'fmin', 'fmax', 'fai', 'ftag', 'flist'];
 function renderSaved() {
   $('#savedWrap').hidden = !saved.length;
   $('#saved').innerHTML = saved.map((s, i) =>
@@ -568,10 +723,12 @@ $('#vacSave').onclick = async () => {
   extraSkills = await load('extraSkills', []);
   vacancies = await load('vacancies', {});
   saved = await load('savedSearches', []);
+  lists = await load('lists', []);
   // the AI check improved since these were stored: score them again
   const stale = (await db.all()).filter(r => !r.error && r.aiVersion !== AI_VERSION);
   if (stale.length) await db.put(stale.map(analyse));
   renderSaved();
+  await initVacancies({ useAsVacancy, listCount: id => new Set(lists.filter(l => l.vacancy === 'job:' + id).flatMap(l => l.members)).size });
   await refresh();
   if (isExtension) await drainInbox();
   else document.body.classList.add('is-web');

@@ -15,6 +15,11 @@
   <button id="exportBtn">Export CSV</button>
 </header>
 
+<nav id="tabs" role="tablist">
+  <button type="button" role="tab" class="tab on" data-tab="cands" aria-selected="true">👥 Candidates</button>
+  <button type="button" role="tab" class="tab" data-tab="vacs" aria-selected="false">💼 Find vacancies</button>
+</nav>
+<div id="tab-cands">
 <p class="web-note">🌐 You are using the <strong>web version</strong>: nothing to install, and CVs are still read only in this browser, never uploaded. To pull candidates straight from your ATS page, install the <a href="../#install">Chrome extension</a>.</p>
 <section id="intake">
   <div id="drop">
@@ -55,6 +60,7 @@
     <label>🤖 AI &amp; tools<select id="fai"><option value="">Show all</option><option value="hideAi">Hide likely AI-written</option><option value="hideTool">Hide likely sent/tailored by a tool</option><option value="hideBoth">Hide both</option><option value="human">Only CVs with no AI or tool signals</option></select></label>
     <label>📝 Cover letter<select id="fletter"><option value="">Any</option><option value="has">Has a cover letter</option><option value="missing">No cover letter</option></select></label>
     <label>📁 Vacancy<select id="ftag"><option value="">All vacancies</option></select></label>
+    <label>📋 List<select id="flist"><option value="">All candidates</option></select></label>
   </div>
   <div class="finder-actions">
     <button id="saveSearch" type="button">★ Save this search</button>
@@ -78,6 +84,7 @@
     </div>
   </div>
   <div id="qhint" class="qhint"></div>
+  <div id="listsWrap" hidden><span class="saved-label">Your lists:</span><span id="lists"></span></div>
   <div id="savedWrap"><span class="saved-label">Your saved searches:</span><span id="saved"></span></div>
 </section>
 <div id="resultLine"></div>
@@ -102,7 +109,7 @@
 
 <table id="tbl">
   <thead><tr>
-    <th data-k="name">Name</th><th id="matchedTh" hidden>Matched</th><th data-k="location">Location</th><th data-k="languages">Languages</th>
+    <th class="sel"><input type="checkbox" id="selAll" aria-label="Select every candidate shown"></th><th data-k="name">Name</th><th id="matchedTh" hidden>Matched</th><th data-k="location">Location</th><th data-k="languages">Languages</th>
     <th data-k="years">Years</th><th data-k="skills">Skills</th><th data-k="education">Education</th>
     <th data-k="ai" title="Written by AI?">🤖 AI</th><th data-k="tool" title="Sent or tailored by a tool?">📨 Tool</th><th data-k="tag">Vacancy</th><th data-k="addedAt">Added</th>
   </tr></thead>
@@ -113,9 +120,41 @@
   Everything stays in this browser. If something breaks, only the error message is sent, anonymously – never CV content.
   <button id="clearAll" class="danger">Delete all CVs</button>
 </footer>
+<div id="selBar" hidden role="region" aria-label="Selected candidates">
+  <span id="selCount"></span>
+  <button type="button" id="selList">📋 Add to list</button>
+  <button type="button" id="selVac">📄 Add to vacancy</button>
+  <button type="button" id="selExport" class="ghost">Export selected</button>
+  <button type="button" id="selClear" class="ghost">Clear selection</button>
+</div>
+</div>
+
+<div id="tab-vacs" hidden>
+<section id="vacFinder">
+  <h2 class="finder-title">Find vacancies</h2>
+  <p class="finder-sub">Collects job ads from the sites in your list. Use an ad as the <strong>vacancy text</strong> for your CVs with one click, or put a shortlist of candidates on it.</p>
+  <div class="vf-search">
+    <label><span>🔎 Job title <span class="why">a comma between alternatives</span></span><input id="vfWords" placeholder="e.g. recruiter, talent acquisition" autocomplete="off"></label>
+    <label>📍 City<input id="vfCity" placeholder="Any city" autocomplete="off"></label>
+    <button id="vfRun" type="button">Search now</button>
+  </div>
+  <div id="vfStatus" aria-live="polite"></div>
+  <h3>Your sites and pages</h3>
+  <ul id="vfSources"></ul>
+  <form id="vfAddForm" class="vf-add"><input id="vfUrl" placeholder="Paste a careers page, job board, search results page or RSS link" autocomplete="off" aria-label="Link to a site with vacancies"><button id="vfAdd">＋ Add</button></form>
+  <div class="vf-suggest"><span class="saved-label">Suggestions:</span><span id="vfPresets"></span></div>
+  <p class="note">Company career pages on Greenhouse, Lever, SmartRecruiters, Workable, Recruitee and Personio, RSS feeds, and any page that publishes its ads for Google Jobs are read automatically. LinkedIn, Indeed and several big Dutch job boards don't allow that: open them with <b>Open ↗</b>, then click <b>Collect vacancies from this page</b> in the extension.</p>
+</section>
+<div class="jobs-head"><span id="jobsLine"></span><label class="note">Site <select id="vfSource"><option value="">All sites</option></select></label></div>
+<table id="jobsTbl" hidden>
+  <thead><tr><th>Vacancy</th><th>Company</th><th>Location</th><th>Posted</th><th>Site</th><th></th></tr></thead>
+  <tbody></tbody>
+</table>
+<p id="jobsEmpty">No vacancies yet. Add a site above and press <b>Search now</b>.</p>
+</div>
 
 <aside id="drawer" hidden>
-  <button id="closeDrawer" class="ghost">Close ✕</button>
+  <button id="closeDrawer" type="button" aria-label="Close" title="Close (Esc)">×</button>
   <div id="drawerBody"></div>
 </aside>
 
@@ -127,6 +166,17 @@
     <datalist id="vacTags"></datalist>
     <textarea id="vacText" rows="12" placeholder="Paste the full vacancy text here"></textarea>
     <div class="row"><button value="save" id="vacSave">Save</button><button value="cancel" class="ghost">Cancel</button></div>
+  </form>
+</dialog>
+
+<dialog id="addDialog">
+  <form method="dialog">
+    <h2 id="addTitle">Add to a list</h2>
+    <label id="addListWrap">List <select id="addList"></select></label>
+    <label id="addNameWrap">Name of the new list <input id="addName" placeholder="e.g. Shortlist sales Utrecht"></label>
+    <label id="addVacWrap"><span id="addVacLabel">Vacancy</span> <select id="addVac"></select></label>
+    <label id="addVacNameWrap" hidden>New vacancy / req <input id="addVacName" placeholder="e.g. REQ-1042 Recruiter"></label>
+    <div class="row"><button value="save" id="addSave">Add</button><button value="cancel" class="ghost">Cancel</button></div>
   </form>
 </dialog>
 
