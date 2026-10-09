@@ -1,5 +1,5 @@
 /* Colours are tokens, so dark mode is one block of values. Auto follows the device; the header button can force one. */
-:root{color-scheme:light;--ink:#1d1b26;--muted:#6b6880;--line:#e4e1ee;--bg:#faf9fd;--surface:#fff;--surface-2:#f4f2fa;--hover:#f7f5ff;--tint:#0000000d;
+:root{color-scheme:light;--accent-fg:#fff;--ink:#1d1b26;--muted:#6b6880;--line:#e4e1ee;--bg:#faf9fd;--surface:#fff;--surface-2:#f4f2fa;--hover:#f7f5ff;--tint:#0000000d;
   --accent:#5b3fd1;--accent-text:#5b3fd1;--accent-soft:#f3f0ff;--accent-ink:#3b2a8f;--any-bg:#ece7ff;--any-ink:#4a33b0;
   --low:#1f8a4c;--mid:#b7791f;--high:#c0392b;--ok-bg:#e3f5ea;--ok-ink:#17683a;--bad-bg:#fde7e5;--bad-ink:#a1271c;
   --warn-bg:#fff7e6;--warn-line:#f2d39b;--warn-ink:#7a5200;--info-bg:#eef6ff;--info-line:#c9defa;--mark:#ffe58a;--badge-bg:#ffffff99;--bar-bg:#1d1b26}
@@ -18,7 +18,7 @@ header{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var
 h1{font-size:18px;margin:0}
 #count{color:var(--muted)}
 .spacer{flex:1}
-button,.btn{font:inherit;padding:7px 12px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+button,.btn{font:inherit;padding:7px 12px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer}
 button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 button.danger{background:transparent;color:var(--high);border:1px solid var(--high)}
 input,select,textarea{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
@@ -148,7 +148,7 @@ button.link.small{font-size:13px;padding:4px 0}
 .doc-only{font-size:11px;background:var(--any-bg);color:var(--any-ink);border-radius:6px;padding:1px 6px;white-space:nowrap}
 .doc-tabs{display:flex;gap:6px;margin:14px 0 6px}
 .doc-tab{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 14px}
-.doc-tab.on{background:var(--accent);color:#fff;border-color:var(--accent-text)}
+.doc-tab.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent-text)}
 .verdicts h3 .ai{font-size:12px;margin-left:4px}
 .verdicts h4{margin:8px 0 0;font-size:13px;color:var(--muted)}
 
@@ -300,3 +300,4 @@ html{-webkit-tap-highlight-color:transparent}
 button:active,.btn:active,#tbl tbody tr:active{filter:brightness(.94)}
 /* phones and tablets can't pick a folder */
 @media (pointer:coarse){label.btn:has(#folder){display:none}}
+input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
