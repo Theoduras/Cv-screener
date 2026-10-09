@@ -2,13 +2,15 @@ import * as db from './lib/db.js';
 import { extract, fileKind, ExtractError } from './lib/extract.js';
 import { parseCV } from './lib/parse.js';
 import { aiScore, textHash } from './lib/aiscore.js';
+import { tailorScore } from './lib/tailor.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
-import { compile, highlight, fromWords, plainLabel, termCode } from './lib/query.js';
+import { compile, highlight, fromWords, plainLabel, termCode, suggest } from './lib/query.js';
+import { SKILLS } from './lib/dict.js';
 
 installGlobalHandlers();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], words = { all: [], groups: [[]], none: [] };
+let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], vacancies = {}, words = { all: [], groups: [[]], none: [] };
 
 const uid = () => crypto.randomUUID();
 const store = (k, v) => chrome.storage.local.set({ [k]: v });
@@ -19,21 +21,32 @@ function analyse(rec) {
   return { ...rec, ...parsed, hash: textHash(rec.text), baseAi: aiScore(rec.text, { producer: rec.producer }) };
 }
 
-// AI score with the duplicate signal, which depends on the whole set.
+// The "sent/tailored by a tool" score depends on the whole set (duplicates, the same person
+// across vacancies) and on the vacancy text, so it is worked out at render time.
+const holder = r => (r.email || r.name || '').toLowerCase().trim();
 function withDupes(list) {
-  const counts = {};
-  for (const r of list) if (r.hash) counts[r.hash] = (counts[r.hash] || 0) + 1;
+  const counts = {}, byHolder = {};
+  for (const r of list) {
+    if (r.error) continue;
+    if (r.hash) counts[r.hash] = (counts[r.hash] || 0) + 1;
+    const h = holder(r);
+    if (h) (byHolder[h] ||= []).push(r);
+  }
   return list.map(r => {
+    if (r.error) return { ...r, aiRes: null, tailRes: null };
     const d = (counts[r.hash] || 1) - 1;
-    return { ...r, aiRes: r.error ? null : d ? aiScore(r.text, { producer: r.producer, duplicates: d }) : r.baseAi };
+    // other vacancies this person applied to with a differently worded CV
+    const others = new Set((byHolder[holder(r)] || []).filter(o => o.tag !== r.tag && o.hash !== r.hash).map(o => o.tag));
+    const tailRes = tailorScore(r, { vacancyText: vacancies[r.tag] || '', duplicates: d, sameHolder: others.size });
+    return { ...r, aiRes: r.baseAi, tailRes };
   });
 }
 
 async function addFromBytes(buf, name, mime, extra) {
   const rec = { id: uid(), addedAt: Date.now(), fileName: name, fileType: fileKind(name, mime), ...extra };
   try {
-    const { text, producer } = await extract(buf, name, mime);
-    return analyse({ ...rec, text, producer });
+    const { text, producer, meta, hiddenWords } = await extract(buf, name, mime);
+    return analyse({ ...rec, text, producer, meta, hiddenWords });
   } catch (e) {
     if (!(e instanceof ExtractError)) report(e, { step: 'extract', fileType: rec.fileType, fileSize: sizeBucket(buf.byteLength) });
     return { ...rec, error: e.message || String(e), name: name, text: '' };
@@ -83,7 +96,7 @@ async function drainInbox() {
 const F = () => ({
   loc: $('#floc').value.trim().toLowerCase(), lang: $('#flang').value,
   min: $('#fmin').value === '' ? null : +$('#fmin').value, max: $('#fmax').value === '' ? null : +$('#fmax').value,
-  ai: $('#fai').value === '' ? null : +$('#fai').value, tag: $('#ftag').value,
+  ai: $('#fai').value, tag: $('#ftag').value,
 });
 
 function filtered() {
@@ -95,11 +108,17 @@ function filtered() {
     if (f.lang && !(r.languages || []).includes(f.lang) && r.cvLanguage !== f.lang) return false;
     if (f.min !== null && !(r.years >= f.min)) return false;
     if (f.max !== null && !(r.years <= f.max)) return false;
-    if (f.ai !== null && r.aiRes && r.aiRes.score > f.ai) return false;
+    if (f.ai && r.aiRes) {
+      const ai = r.aiRes.level === 'high', tool = r.tailRes.level === 'high';
+      if (f.ai === 'hideAi' && ai) return false;
+      if (f.ai === 'hideTool' && tool) return false;
+      if (f.ai === 'hideBoth' && (ai || tool)) return false;
+      if (f.ai === 'human' && (r.aiRes.level !== 'low' || r.tailRes.level !== 'low')) return false;
+    }
     if (f.tag && r.tag !== f.tag) return false;
     return true;
   }).sort((a, b) => {
-    const v = r => sortKey === 'ai' ? r.aiRes?.score ?? -1 : Array.isArray(r[sortKey]) ? r[sortKey].length : r[sortKey] ?? '';
+    const v = r => sortKey === 'ai' ? r.aiRes?.score ?? -1 : sortKey === 'tool' ? r.tailRes?.score ?? -1 : Array.isArray(r[sortKey]) ? r[sortKey].length : r[sortKey] ?? '';
     const x = v(a), y = v(b);
     return (x > y ? 1 : x < y ? -1 : 0) * (sortAsc ? 1 : -1);
   });
@@ -117,7 +136,7 @@ function render() {
   const matchedCell = r => q ? `<td class="matched">${query.matched(r).map(l => `<span class="hit">${esc(plainLabel(l))} ✓</span>`).join(' ')}</td>` : '';
   $('#empty').hidden = rows.length > 0;
   $('#tbl tbody').innerHTML = list.map(r => r.error ? `
-    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
+    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
     <tr data-id="${r.id}">
       <td>${esc(r.name || '(unknown)')}<div class="note">${esc(r.email)}</div></td>
       ${matchedCell(r)}
@@ -126,7 +145,8 @@ function render() {
       <td>${r.years || ''}</td>
       <td class="skills">${esc(r.skills.slice(0, 12).join(', '))}${r.skills.length > 12 ? ' …' : ''}</td>
       <td>${esc(r.education)}</td>
-      <td><span class="ai ${r.aiRes.level}" title="${esc(r.aiRes.reasons.join('\n'))}">${r.aiRes.score}</span></td>
+      <td><span class="ai ${r.aiRes.level}" title="Written by AI?\n${esc(r.aiRes.reasons.join('\n') || 'No signals')}">${r.aiRes.score}</span></td>
+      <td><span class="ai ${r.tailRes.level}" title="Sent or tailored by a tool?\n${esc(r.tailRes.reasons.join('\n') || 'No signals')}">${r.tailRes.score}</span></td>
       <td>${esc(r.tag)}</td>
       <td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td>
     </tr>`).join('');
@@ -158,22 +178,28 @@ function openDrawer(id) {
   $('#drawerBody').innerHTML = `
     <h2>${esc(r.name || r.fileName)}</h2>
     ${r.error ? `<p>⚠ ${esc(r.error)}</p>` : `
-    <h3>AI score: <span class="ai ${r.aiRes.level}">${r.aiRes.score}</span></h3>
-    <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>
-    <p class="note">An indication, not proof. Use it to prioritise, not to reject.</p>
+    <div class="verdicts">
+      <section><h3>🤖 Written by AI? <span class="ai ${r.aiRes.level}">${r.aiRes.score}</span></h3>
+        <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul></section>
+      <section><h3>📨 Sent or tailored by a tool? <span class="ai ${r.tailRes.level}">${r.tailRes.score}</span></h3>
+        <ul>${r.tailRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>
+        ${vacancies[r.tag] ? '' : `<p class="note">Tip: add the vacancy text for “${esc(r.tag || 'this vacancy')}” (📄 Vacancy text, at the top) to also check whether this CV copies the job ad.</p>`}</section>
+    </div>
+    <p class="note">Both are indications, not proof. Use them to prioritise, never to reject on their own – a candidate may tailor their own CV to your vacancy, which is a good thing.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).map(plainLabel).join(', ') || 'none')}</p>` : ''}
-    <h3>Text</h3><pre>${highlight(esc(r.text), query.terms)}</pre>`}
+    <h3>Text</h3><pre>${highlight(esc(r.text), query.terms, r)}</pre>`}
     <button class="danger" id="delOne">Delete this candidate</button>`;
   $('#delOne').onclick = async () => { await db.remove(id); $('#drawer').hidden = true; refresh(); };
   $('#drawer').hidden = false;
 }
 
 function exportCsv() {
-  const cols = ['name', 'email', 'phone', 'linkedin', 'location', 'languages', 'cvLanguage', 'years', 'education', 'skills', 'ai', 'aiReasons', 'tag', 'fileName', 'addedAt'];
+  const cols = ['name', 'email', 'phone', 'linkedin', 'location', 'languages', 'cvLanguage', 'years', 'education', 'skills', 'ai', 'aiReasons', 'tool', 'toolReasons', 'tag', 'fileName', 'addedAt'];
   const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = filtered().map(r => cols.map(c => cell(
     c === 'ai' ? r.aiRes?.score : c === 'aiReasons' ? r.aiRes?.reasons.join(' | ') :
+    c === 'tool' ? r.tailRes?.score : c === 'toolReasons' ? r.tailRes?.reasons.join(' | ') :
     c === 'addedAt' ? new Date(r.addedAt).toISOString() : Array.isArray(r[c]) ? r[c].join(', ') : r[c])).join(','));
   const blob = new Blob(['﻿' + [cols.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `cv-screener-${new Date().toISOString().slice(0, 10)}.csv` });
@@ -248,9 +274,10 @@ function summary() {
   if ($('#floc').value.trim()) extra.push(`in ${$('#floc').value.trim()}`);
   if ($('#flang').value) extra.push(`who speak ${$('#flang').value}`);
   if ($('#fmin').value) extra.push(`with ${$('#fmin').value}+ years of experience`);
-  if ($('#fai').value === '54') extra.push('hiding likely AI-written CVs');
-  if ($('#fai').value === '24') extra.push('only clearly human-written CVs');
+  extra.push({ hideAi: 'hiding likely AI-written CVs', hideTool: 'hiding CVs likely sent or tailored by a tool',
+    hideBoth: 'hiding likely AI-written and tool-sent CVs', human: 'only CVs with no AI or tool signals' }[$('#fai').value] || '');
   if ($('#ftag').value) extra.push(`for ${$('#ftag').value}`);
+  extra.splice(0, extra.length, ...extra.filter(Boolean));
   if (!s && !extra.length) return '';
   return (s || 'All candidates') + (extra.length ? ' · ' + extra.join(' · ') : '') + '.';
 }
@@ -264,6 +291,16 @@ function ensureGroupFields() {
       ${i ? `<button type="button" class="link small del-group" data-g="${i}">remove this list</button>` : ''}</div>`);
   }
 }
+// Words to suggest from: known skills first (ties go to the earlier word), then the CVs' own words by frequency.
+let vocabCacheKey = null, vocabCacheVal = [];
+function vocabulary() {
+  if (vocabCacheKey === rows) return vocabCacheVal;
+  const freq = {};
+  for (const r of rows) for (const w of new Set((r.text || '').toLowerCase().match(/[\p{L}]{3,}/gu) || [])) freq[w] = (freq[w] || 0) + 1;
+  const known = [...new Set([...extraSkills.map(s => s.toLowerCase()), ...SKILLS.filter(s => /^[\p{L}\p{N}]+$/u.test(s))])];
+  vocabCacheKey = rows;
+  return (vocabCacheVal = [...known, ...Object.keys(freq).sort((a, b) => freq[b] - freq[a])]);
+}
 function renderWords() {
   ensureGroupFields();
   const count = t => { const c = compile(termCode(t)); return rows.filter(r => !r.error && c.test(r)).length; };
@@ -271,7 +308,10 @@ function renderWords() {
     const kind = f.dataset.kind, cls = kind.startsWith('g:') ? 'any' : kind;
     f.querySelector('.chips').innerHTML = list(kind).map((t, i) => {
       const badges = [MODE_TAG[t.mode], FIELD_TAG[t.field]].filter(Boolean).map(b => `<small class="badge">${b}</small>`).join('');
-      return `<span class="word ${cls}"><button type="button" class="wtext" data-edit="${kind}" data-i="${i}" title="Click for options: exact match, starts with, where to look">${esc(t.text)}${badges}<small class="cnt" title="CVs that contain this">${count(t)}</small></button><button type="button" class="wdel" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(t.text)}">×</button></span>`;
+      const n = count(t);
+      const alt = n === 0 && rows.length && /^[\p{L}\p{N}]+$/u.test(t.text) ? suggest(t.text, vocabulary()) : null;
+      return `<span class="word ${cls}"><button type="button" class="wtext" data-edit="${kind}" data-i="${i}" title="Click for options: exact match, starts with, where to look">${esc(t.text)}${badges}<small class="cnt" title="CVs that contain this">${n}</small></button><button type="button" class="wdel" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(t.text)}">×</button></span>` +
+        (alt ? `<button type="button" class="dym" data-kind="${kind}" data-i="${i}" data-word="${esc(alt)}">Did you mean <b>${esc(alt)}</b>?</button>` : '');
     }).join('');
   });
   $('#summary').textContent = summary();
@@ -360,7 +400,9 @@ document.addEventListener('click', e => {
   const g = e.target.closest('.del-group');
   if (g) { words.groups.splice(+g.dataset.g, 1); render(); return; }
   const s = e.target.closest('.sugg');
-  if (s) addWords('all', s.dataset.word);
+  if (s) { addWords('all', s.dataset.word); return; }
+  const dym = e.target.closest('.dym');
+  if (dym) { list(dym.dataset.kind)[+dym.dataset.i].text = dym.dataset.word; render(); }
 });
 $('#advToggle').onclick = () => {
   const adv = $('#advanced');
@@ -433,8 +475,26 @@ $('#saved').onclick = async e => {
 $('#qhelpBtn').onclick = () => { $('#qhelp').hidden = !$('#qhelp').hidden; };
 $('#qhelp').onclick = e => { const ex = e.target.closest('code'); if (ex) { $('#fq').value = ex.textContent; render(); } };
 
+// ---------- vacancy text (for the "copies the job ad" signal) ----------
+$('#vacBtn').onclick = () => {
+  const tags = [...new Set(rows.map(r => r.tag).filter(Boolean))];
+  $('#vacTags').innerHTML = tags.map(t => `<option value="${esc(t)}">`).join('');
+  $('#vacTag').value = $('#tagInput').value.trim() || $('#ftag').value || tags[0] || '';
+  $('#vacText').value = vacancies[$('#vacTag').value] || '';
+  $('#vacDialog').showModal();
+};
+$('#vacTag').oninput = () => { $('#vacText').value = vacancies[$('#vacTag').value.trim()] || ''; };
+$('#vacSave').onclick = async () => {
+  const tag = $('#vacTag').value.trim();
+  if (!tag) return;
+  if ($('#vacText').value.trim()) vacancies[tag] = $('#vacText').value; else delete vacancies[tag];
+  await store('vacancies', vacancies);
+  refresh();
+};
+
 (async () => {
   extraSkills = await load('extraSkills', []);
+  vacancies = await load('vacancies', {});
   saved = await load('savedSearches', []);
   renderSaved();
   await refresh();

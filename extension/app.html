@@ -21,7 +21,7 @@
     <div class="row">
       <label class="btn">Choose files<input type="file" id="files" multiple accept=".pdf,.docx,.doc,.txt,.html,.htm" hidden></label>
       <label class="btn">Choose folder<input type="file" id="folder" webkitdirectory hidden></label>
-      <input id="tagInput" placeholder="Vacancy / req (e.g. REQ-1234)">
+      <input id="tagInput" placeholder="Vacancy / req (e.g. REQ-1234)"><button id="vacBtn" class="ghost" type="button" title="Paste the job ad, to check which CVs copy it">📄 Vacancy text</button>
     </div>
     <progress id="prog" hidden></progress><span id="progText"></span>
   </div>
@@ -51,7 +51,7 @@
     <label>📍 Where<input id="floc" placeholder="Any city"></label>
     <label>🗣 Speaks<select id="flang"><option value="">Any language</option></select></label>
     <label>⏳ Experience<select id="fmin"><option value="">Any</option><option value="1">1+ years</option><option value="2">2+ years</option><option value="3">3+ years</option><option value="5">5+ years</option><option value="10">10+ years</option></select></label>
-    <label>🤖 AI-written CVs<select id="fai"><option value="">Show all</option><option value="54">Hide likely AI (red)</option><option value="24">Only clearly human (green)</option></select></label>
+    <label>🤖 AI &amp; tools<select id="fai"><option value="">Show all</option><option value="hideAi">Hide likely AI-written</option><option value="hideTool">Hide likely sent/tailored by a tool</option><option value="hideBoth">Hide both</option><option value="human">Only CVs with no AI or tool signals</option></select></label>
     <label>📁 Vacancy<select id="ftag"><option value="">All vacancies</option></select></label>
   </div>
   <div class="finder-actions">
@@ -82,7 +82,7 @@
 <div id="tagEditor" hidden role="dialog" aria-label="Word options">
   <div class="te-title"></div>
   <fieldset><legend>How should it match?</legend>
-    <label><input type="radio" name="te-mode" value="similar"> <b>Similar words</b> <span>nurse also finds nurses</span></label>
+    <label><input type="radio" name="te-mode" value="similar"> <b>Similar words</b> <span>also catches typos and endings: managment → management, nurse → nurses</span></label>
     <label><input type="radio" name="te-mode" value="exact"> <b>Exactly this</b> <span>only this exact word or phrase</span></label>
     <label class="te-starts"><input type="radio" name="te-mode" value="starts"> <b>Starts with</b> <span>recruit finds recruiter, recruitment</span></label>
   </fieldset>
@@ -102,7 +102,7 @@
   <thead><tr>
     <th data-k="name">Name</th><th id="matchedTh" hidden>Matched</th><th data-k="location">Location</th><th data-k="languages">Languages</th>
     <th data-k="years">Years</th><th data-k="skills">Skills</th><th data-k="education">Education</th>
-    <th data-k="ai">AI score</th><th data-k="tag">Vacancy</th><th data-k="addedAt">Added</th>
+    <th data-k="ai" title="Written by AI?">🤖 AI</th><th data-k="tool" title="Sent or tailored by a tool?">📨 Tool</th><th data-k="tag">Vacancy</th><th data-k="addedAt">Added</th>
   </tr></thead>
   <tbody></tbody>
 </table>
@@ -116,6 +116,17 @@
   <button id="closeDrawer" class="ghost">Close ✕</button>
   <div id="drawerBody"></div>
 </aside>
+
+<dialog id="vacDialog">
+  <form method="dialog">
+    <h2>Vacancy text</h2>
+    <p>Paste the job ad. CVs for this vacancy that copy its sentences word-for-word – what auto-apply tools do – get flagged under 📨.</p>
+    <label>Vacancy <input id="vacTag" list="vacTags" placeholder="e.g. REQ-1042 Recruiter"></label>
+    <datalist id="vacTags"></datalist>
+    <textarea id="vacText" rows="12" placeholder="Paste the full vacancy text here"></textarea>
+    <div class="row"><button value="save" id="vacSave">Save</button><button value="cancel" class="ghost">Cancel</button></div>
+  </form>
+</dialog>
 
 <dialog id="settings">
   <form method="dialog">

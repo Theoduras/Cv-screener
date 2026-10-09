@@ -51,7 +51,7 @@ ok(rowsText.some(r => r.includes('Sanne de Vries') && r.includes('Utrecht')), 'D
 ok(rowsText.filter(r => r.includes('John Petersen')).length === 2, 'PDF + TXT parsed');
 await app.setViewportSize({ width: 1280, height: 640 });
 await app.screenshot({ path: path.join(root, 'site/screenshot.png') });
-await app.selectOption('#fai', '24');
+await app.selectOption('#fai', 'human');
 ok(await app.$$eval('tbody tr', t => t.length) === 1, 'AI filter keeps only the human CV');
 await app.selectOption('#fai', '');
 await app.fill('#in-all', 'python'); await app.press('#in-all', 'Enter'); await app.fill('#in-all', 'docker'); await app.press('#in-all', 'Enter');
@@ -105,6 +105,15 @@ await app.fill(g1, 'docker'); await app.press(g1, 'Enter');
 ok(await app.$$eval('tbody tr', t => t.length) === 2, 'two either/or lists combine with AND');
 ok((await app.textContent('#summary')).includes('at least one of python or salarisadministratie, and who have docker'), 'summary reads the combination');
 await app.click('#reset');
+// typos: a misspelled search word still finds the CV, and a hopeless one offers "Did you mean"
+await app.fill('#in-all', 'pyhton'); await app.press('#in-all', 'Enter');
+ok(await app.$$eval('tbody tr', t => t.length) === 2, 'typo in search word still finds CVs');
+await app.click('#reset');
+await app.fill('#in-all', 'pyhn'); await app.press('#in-all', 'Enter');
+ok((await app.textContent('.dym')).includes('python'), 'did-you-mean suggestion');
+await app.click('.dym');
+ok(await app.$$eval('tbody tr', t => t.length) === 2, 'did-you-mean applies');
+await app.click('#reset');
 const [dl] = await Promise.all([app.waitForEvent('download'), app.click('#exportBtn')]);
 const csv = readFileSync(await dl.path(), 'utf8');
 ok(csv.split('\r\n').length === 4 && csv.includes('Sanne de Vries'), 'CSV export');
@@ -120,6 +129,14 @@ console.log('capture', JSON.stringify(res));
 if (!res.err) {
   await app.waitForFunction(() => document.querySelectorAll('tbody tr').length === 4, null, { timeout: 15000 });
   ok((await app.textContent('tbody')).includes('REQ-42'), 'capture tagged with page title');
+  // vacancy text: a CV that copies the ad gets a 📨 score
+  await app.click('#vacBtn');
+  await app.fill('#vacTag', 'REQ-42 Kandidaat');
+  await app.fill('#vacText', readFileSync(fx('ai-en.txt'), 'utf8').split('PROFESSIONAL EXPERIENCE')[0]);
+  await app.click('#vacSave');
+  await app.waitForTimeout(300);
+  const toolScores = await app.$$eval('tbody tr', trs => trs.map(t => t.children[7]?.innerText));
+  ok(toolScores.some(x => +x >= 55), 'copied vacancy text raises the tool score: ' + toolScores.join(','));
 } else console.log('skip  capture (needs host access in headless):', res.err);
 
 ok(!errors.length, 'no page errors / reports: ' + errors.join(' | '));

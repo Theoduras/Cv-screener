@@ -11,7 +11,7 @@ const cv = xs => {
   return mean ? sd / mean : 1;
 };
 
-export function aiScore(text, { producer = '', duplicates = 0 } = {}) {
+export function aiScore(text, { producer = '' } = {}) {
   const reasons = [];
   let score = 0;
   const add = (pts, why) => { if (pts > 0) { score += pts; reasons.push(`${why} (+${Math.round(pts)})`); } };
@@ -43,7 +43,6 @@ export function aiScore(text, { producer = '', duplicates = 0 } = {}) {
   if (ph.length) add(Math.min(60, 45 + 10 * (ph.length - 1)), `Leftover template/AI text: "${ph[0].slice(0, 50)}"`);
 
   if (producer && AI_PRODUCERS.test(producer)) add(25, `PDF made with "${producer.slice(0, 40)}"`);
-  if (duplicates > 0) add(Math.min(25, 15 + 5 * duplicates), `Same text as ${duplicates} other application(s)`);
 
   score = Math.min(100, Math.round(score));
   return { score, level: score >= 55 ? 'high' : score >= 25 ? 'medium' : 'low', reasons };

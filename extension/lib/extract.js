@@ -16,18 +16,26 @@ async function pdfText(buf) {
   const lib = window.pdfjsLib;
   lib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('vendor/pdf.worker.min.js');
   const pdf = await lib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
-  let producer = '';
+  let producer = '', meta = {};
   try {
     const { info } = await pdf.getMetadata();
     producer = [info?.Producer, info?.Creator].filter(Boolean).join(' / ');
+    meta = { title: info?.Title || '', subject: info?.Subject || '', keywords: info?.Keywords || '' };
   } catch { /* metadata is optional */ }
+  // Words drawn too small to read, or outside the page: the usual way to hide keywords from people but not from an ATS.
+  let hiddenWords = 0;
   const pages = [];
   for (let i = 1; i <= Math.min(pdf.numPages, 15); i++) {
     const page = await pdf.getPage(i);
     const tc = await page.getTextContent();
+    const [x0, y0, x1, y1] = page.view;
     let out = '', lastY = null;
     for (const it of tc.items) {
-      const y = it.transform?.[5];
+      const [a, b, , , x, y] = it.transform || [];
+      const size = Math.hypot(a || 0, b || 0);
+      if (it.str.trim() && (size < 3 || x < x0 - 5 || x > x1 + 5 || y < y0 - 5 || y > y1 + 5))
+        hiddenWords += it.str.trim().split(/\s+/).length;
+      // y (from the transform above) is this item's baseline
       if (lastY !== null && y !== undefined && Math.abs(y - lastY) > 2 && !out.endsWith('\n')) out += '\n';
       out += it.str + (it.hasEOL ? '\n' : '');
       if (y !== undefined) lastY = y;
@@ -35,7 +43,7 @@ async function pdfText(buf) {
     pages.push(out);
   }
   await pdf.destroy();
-  return { text: pages.join('\n'), producer };
+  return { text: pages.join('\n'), producer, meta, hiddenWords };
 }
 
 export async function extract(buf, name, mime) {

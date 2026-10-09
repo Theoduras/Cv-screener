@@ -12,7 +12,13 @@ const out = f => path.join(root, 'docs/screenshots', f);
 const tmp = mkdtempSync(path.join(tmpdir(), 'shots-'));
 const id = [...createHash('sha256').update(ext).digest('hex').slice(0, 32)].map(c => String.fromCharCode(97 + parseInt(c, 16))).join('');
 
+const VACANCY = `Recruiter (32 hours) – Eindhoven
+You will be responsible for the full recruitment cycle for our technical vacancies.
+You have experience with stakeholder management in a fast-growing organisation and you are comfortable
+working with an applicant tracking system such as Oleeo. You build strong relationships with hiring managers
+and you know how to attract passive candidates through LinkedIn and events.`;
 const extra = {
+  'mark-de-boer_ATS-optimized.txt': `Mark de Boer\nEindhoven\nmark.deboer@example.com\n\nProfile\nRecruiter responsible for the full recruitment cycle for technical vacancies. I have experience with stakeholder management in a fast-growing organisation and I am comfortable working with an applicant tracking system such as Oleeo. I build strong relationships with hiring managers and know how to attract passive candidates through LinkedIn and events.\n\nWork experience\n2020 - present Recruiter, Brainport Talent, Eindhoven\n2017 - 2020 Sourcer, Philips, Eindhoven\n\nLanguages\nDutch native, English fluent`,
   'fatima-el-amrani.txt': `Fatima El Amrani\nRotterdam\nfatima.elamrani@example.com | +31 6 23456789\n\nWork experience\n2021 - present Data analyst, Port of Rotterdam\nPower BI dashboards, SQL on shipping data, some Python.\n2018 - 2021 Junior controller, Eneco\nMonth-end close, budgeting, lots of Excel.\n\nEducation\n2014 - 2018 BSc Business Economics, Erasmus University\n\nLanguages\nDutch native, English fluent, Arabic good`,
   'pieter-bakker.txt': `Pieter Bakker\nLocation: Groningen\npieter@example.com\n\nWork experience\nMarch 2012 - present Work planner, building services, Kuipers BV\nAutoCAD, Revit, BIM models, procurement of materials.\n2008 - 2012 Electrician, Feenstra\n\nEducation\nMBO Electrical engineering, level 4\n\nLanguages: Dutch, German (basic)`,
   'emma-jansen.txt': `Emma Jansen\nEindhoven\nemma.jansen@example.com\n\nProfile\nResults-driven and highly motivated recruiter, passionate about people. Proactive, detail-oriented and a true team player who thrives in a fast-paced environment – committed to excellence and eager to contribute.\n\nWork experience\n2022 - present Recruiter, [Company Name], Eindhoven\n- Responsible for end-to-end recruitment and selection.\n- Proactive sourcing via LinkedIn and job boards.\n- Meticulous management of candidates in the ATS.\n- Customer-centric contact with hiring managers.\n\nLanguages\nDutch native, English C1`,
@@ -43,11 +49,29 @@ await app.route('**/api/report', r => r.fulfill({ status: 200, body: '{}' }));
 await app.goto(`chrome-extension://${id}/app.html`);
 await app.fill('#tagInput', 'REQ-1042 Recruiter');
 await app.setInputFiles('#files', [pdfPath, path.join(tmp, 'sophie-de-vries.docx'), ...Object.keys(extra).map(f => path.join(tmp, f))]);
-await app.waitForFunction(() => document.querySelectorAll('tbody tr').length === 5, null, { timeout: 30000 });
+await app.waitForFunction(() => document.querySelectorAll('tbody tr').length === 6, null, { timeout: 30000 });
 await app.click('th[data-k="ai"]');
 await app.screenshot({ path: out('1-overview.png') });
 
-await app.selectOption('#fai', '54'); await app.selectOption('#flang', 'English');
+// vacancy text -> the 📨 indicator
+await app.click('#vacBtn');
+await app.fill('#vacTag', 'REQ-1042 Recruiter');
+await app.fill('#vacText', VACANCY);
+await app.screenshot({ path: out('11-vacancy-text.png') });
+await app.click('#vacSave');
+await app.waitForTimeout(300);
+await app.click('th[data-k="tool"]');
+await app.screenshot({ path: out('1-overview.png') });
+await app.click('tbody tr:first-child');
+await app.screenshot({ path: out('12-ai-and-tool.png') });
+await app.click('#closeDrawer');
+// typo search + did you mean
+await app.fill('#in-all', 'managment'); await app.press('#in-all', 'Enter');
+await app.fill('#in-all', 'pyhn'); await app.press('#in-all', 'Enter');
+await app.evaluate(() => scrollTo(0, 0));
+await app.screenshot({ path: out('13-typos.png'), fullPage: true });
+await app.click('#reset');
+await app.selectOption('#fai', 'hideAi'); await app.selectOption('#flang', 'English');
 await app.screenshot({ path: out('2-filtered.png') });
 await app.click('#reset');
 
@@ -57,7 +81,7 @@ await app.click('#closeDrawer');
 
 // guided search: plain boxes, quick-add, saved searches, then the highlighted CV and the no-results helper
 const type = async (box, words) => { for (const w of words) { await app.fill(box, w); await app.press(box, 'Enter'); } };
-await type('#in-all', ['recruit']); await app.selectOption('#fai', '54');
+await type('#in-all', ['recruit']); await app.selectOption('#fai', 'hideAi');
 app.once('dialog', d => d.accept('Recruiters – no AI CVs')); await app.click('#saveSearch');
 await app.click('#reset');
 await type('#in-all', ['python']);

@@ -84,3 +84,32 @@ test('word options: exact, starts with, field, and several either/or lists', asy
   assert.deepEqual(q({ groups: [[T('sap'), T('python')], [T('oracle')]] }), ['Bob']);
   assert.deepEqual(q({ none: [T('sap', 'similar', 'skill')] }), ['Ann']);
 });
+
+test('typos: on either side, short words exact, other modes strict', async () => {
+  const { fromWords, suggest, editDistance } = await import('../extension/lib/query.js');
+  const T = (text, mode = 'similar') => ({ text, mode, field: 'any' });
+  const rows = [
+    { name: 'Cas', text: 'Project managment and Pyhton scripting. Oracle.' },
+    { name: 'Dee', text: 'Management trainee. Java developer.' },
+  ];
+  const q = w => rows.filter(compile(fromWords(w)).test).map(r => r.name);
+  assert.deepEqual(q({ all: [T('management')] }), ['Cas', 'Dee'], 'CV misspelling found');
+  assert.deepEqual(q({ all: [T('pyhton')] }), ['Cas']);
+  assert.deepEqual(q({ all: [T('python')] }), ['Cas'], 'swapped letters in the CV');
+  assert.deepEqual(q({ all: [T('oracel')] }), ['Cas'], 'recruiter typo');
+  assert.deepEqual(q({ all: [T('lava')] }), [], 'java is not lava: first letter must agree');
+  assert.deepEqual(q({ all: [T('sap')] }), [], 'short words stay exact');
+  assert.deepEqual(q({ all: [T('management', 'exact')] }), ['Dee'], 'exact mode has no typo tolerance');
+  assert.equal(editDistance('pyhton', 'python'), 1);
+  assert.equal(suggest('pyton', ['python', 'pylon', 'oracle']), 'python');
+  assert.equal(suggest('zzzz', ['python']), null);
+  const c = compile(fromWords({ all: [T('management')] }));
+  assert.equal(highlight('Project managment here', c.terms, rows[0]), 'Project <mark>managment</mark> here');
+});
+
+test('typo tolerance does not reach file-name noise', async () => {
+  const { similarWord } = await import('../extension/lib/query.js');
+  assert.equal(similarWord('docx', 'docker'), false);
+  assert.equal(similarWord('managment', 'managements'), true);
+  assert.equal(similarWord('nurses', 'nurse'), true);
+});

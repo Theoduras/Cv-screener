@@ -36,7 +36,7 @@ Under **Find candidates**, type a word or phrase in a box and press **Enter** (o
 - 🚫 **Leave out:** hides CVs that mention these.
 
 **Click any word** for its options:
-- **Similar words** (the default): *nurse* also finds *nurses*.
+- **Similar words** (the default): also catches typos and endings, so *nurse* finds *nurses* and *management* finds a CV that says *managment*. A typo in what *you* type is forgiven too, and a word that finds nothing offers **Did you mean …?**
 - **Exactly this:** only that exact word or phrase.
 - **Starts with:** *recruit* finds *recruiter*, *recruitment*.
 - **Where should we look?** Anywhere in the CV, or only in the skills, location, education, languages or name.
@@ -48,10 +48,20 @@ Click **+ a skill** under **Quick add** to use the skills that appear most in yo
 **★ Save this search** keeps it all under a name, so next time it's one click. **Start over** clears everything.
 If nothing matches, the screen tells you so and offers the words you can remove with one click.
 
-**The AI score (0–100)**
-- Green (< 25) means few signals, orange (25–54) some, red (≥ 55) many.
-- Hover over the score or open the candidate to see *why*. Typical signals are AI wording ("results-driven", "proven track record"), leftover template text such as "[Company Name]", very uniform sentences, the tool the PDF was made with, and exactly the same text as another applicant.
-- **It is an indication, not proof.** Use it to prioritise, never to reject someone on its own.
+**Is this CV written or sent by AI? Two separate checks**
+
+Every CV gets two scores from 0 to 100: green below 25, orange from 25 to 54, red from 55. Hover over a score, or open the candidate, to see *why*.
+
+| | Asks | Looks for |
+|---|---|---|
+| 🤖 **AI** | Was the text *written* by AI? | Typical AI wording ("results-driven", "proven track record", "gedreven"), very uniform sentences and bullets, leftover template text like "[Company Name]", AI CV builders in the PDF details |
+| 📨 **Tool** | Was the CV *sent or rewritten per vacancy* by an auto-apply tool? | Sentences copied word-for-word from your vacancy, the same person sending differently worded CVs to several vacancies, exactly the same CV from different applicants, tiny or hidden text stuffed with keywords, file names like *CV_ATS-optimized*, auto-apply tool names in the PDF details, long keyword lists |
+
+To check the copying, click **📄 Vacancy text** at the top and paste the job ad for that vacancy/req. You only need to do this once per vacancy.
+
+In **🤖 AI & tools** you can hide likely AI-written CVs, likely tool-sent CVs, or both.
+
+**These are indications, not proof.** A candidate may tailor their own CV to your vacancy, which is a good thing, and a human can write in a polished style. Use the scores to decide what to read first, never to reject someone on their own.
 
 ## 3. Privacy
 

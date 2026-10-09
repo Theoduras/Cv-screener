@@ -18,7 +18,7 @@ const FIELDS = {
   tag: r => r.tag, vacancy: r => r.tag, req: r => r.tag,
   file: r => r.fileName, text: r => r.text,
 };
-const NUMERIC = { years: r => r.years, ai: r => r.aiRes?.score ?? r.baseAi?.score };
+const NUMERIC = { years: r => r.years, ai: r => r.aiRes?.score ?? r.baseAi?.score, tool: r => r.tailRes?.score };
 const all = r => [r.text, r.name, r.email, r.location, (r.skills || []).join(' '), (r.languages || []).join(' '),
   r.cvLanguage, r.education, r.tag, r.fileName].filter(Boolean).join('\n');
 
@@ -76,6 +76,62 @@ function termRegex(value, phrase) {
   return new RegExp(`(?<![\\p{L}\\p{N}])${body}${tail}`, 'iu');
 }
 
+// ---------- typo tolerance for "similar" words (word~) ----------
+// Both sides may be misspelled: the recruiter's "pyhton", or the CV's "managment".
+const ENDINGS = ['ments', 'ment', 'ers', 'ing', 'es', 'er', 'ed', 'en', 's'];
+export function stem(w) {
+  w = w.toLowerCase();
+  for (const e of ENDINGS) if (w.endsWith(e) && w.length - e.length >= 3) return w.slice(0, -e.length);
+  return w;
+}
+// Optimal-string-alignment distance (a swap of two neighbours counts as one edit), stopping early past `max`.
+export function editDistance(a, b, max = 2) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let rowMin = Infinity;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      rowMin = Math.min(rowMin, d[i][j]);
+    }
+    if (rowMin > max) return max + 1;
+  }
+  return d[a.length][b.length];
+}
+// Short words must be exact: "sql" ~ "sap" would be noise.
+const allowed = len => len <= 3 ? 0 : len <= 7 ? 1 : 2;
+export function similarWord(word, target) {
+  const w = word.toLowerCase(), t = target.toLowerCase();
+  if (stem(w) === stem(t)) return true;
+  // Typos are measured on the whole words, not the stems: otherwise "docker" -> "dock" sits one letter from "docx".
+  const k = allowed(Math.min(w.length, t.length));
+  return k > 0 && w[0] === t[0] && editDistance(w, t, k) <= k;
+}
+const vocabCache = new Map();
+function vocab(text) {
+  let v = vocabCache.get(text);
+  if (!v) {
+    if (vocabCache.size > 4000) vocabCache.clear();
+    v = [...new Set((text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []))];
+    vocabCache.set(text, v);
+  }
+  return v;
+}
+// Closest real word for a search word that finds nothing ("Did you mean …?").
+export function suggest(word, words) {
+  const w = word.toLowerCase();
+  let best = null, bestD = 3;
+  for (const c of words) {
+    if (c === w || c.length < 3 || c[0] !== w[0]) continue;
+    const d = editDistance(stem(w), stem(c), 2);
+    if (d < bestD) { best = c; bestD = d; } // ties keep the earlier word: callers list known skills and frequent words first
+  }
+  return bestD <= 2 ? best : null;
+}
+
 function build(node, terms) {
   if (node.or) { const f = node.or.map(n => build(n, terms)); return r => f.some(g => g(r)); }
   if (node.and) { const f = node.and.map(n => build(n, terms)); return r => f.every(g => g(r)); }
@@ -100,8 +156,11 @@ function build(node, terms) {
   // An unknown "field:" is just text with a colon in it (e.g. "c#:" or a time "9:00").
   const hay = get || (r => all(r));
   const rx = get ? re : termRegex(`${field}:${value}`, true);
-  const t = r => rx.test(hay(r) || '');
-  terms.push({ label, test: t, highlight: !field || field === 'text' ? rx : null });
+  const word = value.trim().slice(0, -1);
+  const fuzzy = get && !phrase && value.trim().endsWith('~') && /^[\p{L}\p{N}]+$/u.test(word);
+  const variants = r => fuzzy ? vocab(hay(r) || '').filter(w => similarWord(w, word)) : [];
+  const t = fuzzy ? r => rx.test(hay(r) || '') || variants(r).length > 0 : r => rx.test(hay(r) || '');
+  terms.push({ label, test: t, highlight: !field || field === 'text' ? rx : null, variants: !field || field === 'text' ? variants : null });
   return t;
 }
 
@@ -149,12 +208,16 @@ export function compile(q) {
 }
 
 // Wrap every positive text term in <mark>. Input must already be HTML-escaped.
-export function highlight(escapedHtml, terms) {
-  let out = escapedHtml;
+// `row` lets a typo-tolerant term mark the misspelled variant it actually found.
+export function highlight(escapedHtml, terms, row) {
+  const sources = [];
   for (const t of terms) {
     if (!t.highlight) continue;
-    const g = new RegExp(t.highlight.source, 'giu');
-    out = out.replace(g, m => `<mark>${m}</mark>`);
+    sources.push(t.highlight.source);
+    const v = row && t.variants ? t.variants(row) : [];
+    if (v.length) sources.push(`(?<![\\p{L}\\p{N}])(?:${v.map(esc).join('|')})(?![\\p{L}\\p{N}])`);
   }
-  return out;
+  if (!sources.length) return escapedHtml;
+  // One pass with every pattern, so a <mark> is never placed inside another one.
+  return escapedHtml.replace(new RegExp(sources.map(s => `(?:${s})`).join('|'), 'giu'), m => `<mark>${m}</mark>`);
 }

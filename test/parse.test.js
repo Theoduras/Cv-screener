@@ -41,8 +41,7 @@ test('AI score separates the two fixtures', () => {
   assert.ok(a.reasons.some(r => r.includes('template')));
 });
 
-test('producer and duplicates raise the score', () => {
+test('producer raises the score; fingerprint is whitespace-insensitive', () => {
   assert.ok(aiScore(human, { producer: 'Kickresume PDF' }).score >= 25);
-  assert.ok(aiScore(human, { duplicates: 2 }).score >= 25);
   assert.equal(textHash('Hallo  Wereld'), textHash('hallo wereld'));
 });

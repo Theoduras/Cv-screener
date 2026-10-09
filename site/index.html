@@ -22,7 +22,7 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
 <h1>CV Screener</h1>
 <p class="lede">Read, filter and check hundreds of CVs at once, alongside your own ATS. Everything stays in your browser.</p>
 <a class="dl" href="cv-screener.zip" download>Download cv-screener.zip</a>
-<p class="small">Chrome or Edge · version 0.4 (test build)</p>
+<p class="small">Chrome or Edge · version 0.5 (test build)</p>
 <img src="screenshot.png" alt="The screener: CVs in a table with location, languages, years of experience, skills and AI score">
 
 <h2>Install (2 minutes)</h2>
@@ -54,9 +54,17 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
 <p><strong>Click a word</strong> to choose <em>Exactly this</em>, <em>Starts with</em>, or where to look (only skills, location, education…). A plain sentence under the boxes says exactly what you are searching for. <strong>★ Save this search</strong> keeps it as a one-click button.</p>
 <img src="search.png" alt="A custom search with saved searches and the Matched column">
 
-<h2>The AI score</h2>
-<p>The score runs from 0 to 100: green is few signals, orange some, red many. Open a candidate to see <em>why</em>. Typical signals are AI wording, leftover template text such as “[Company Name]”, very uniform sentences, the tool the PDF was made with, and exactly the same text as another applicant.
-<strong>It is an indication, not proof.</strong> Use it to prioritise, never to reject someone on its own.</p>
+<h2>Written by AI, or sent by an AI tool?</h2>
+<p>Every CV gets two separate scores, shown in green, orange or red:</p>
+<ul>
+  <li>🤖 <strong>AI:</strong> was the text <em>written</em> by AI? It looks for typical AI wording, very uniform sentences, leftover template text and AI CV builders.</li>
+  <li>📨 <strong>Tool:</strong> was the CV <em>sent or rewritten per vacancy</em> by an auto-apply tool? It looks for sentences copied word-for-word from your job ad (paste it once under <em>📄 Vacancy text</em>), the same person sending differently worded CVs to several vacancies, identical CVs from different people, hidden keyword text, and tool names.</li>
+</ul>
+<p>Open a candidate to see exactly why. <strong>These are indications, not proof:</strong> a candidate may tailor their own CV, which is a good thing. Use them to decide what to read first, never to reject someone on their own.</p>
+<img src="ai-tool.png" alt="A candidate with a separate AI score and Tool score, and the reasons for each">
+
+<h2>Typos are fine</h2>
+<p>Searching for <em>management</em> also finds a CV that says <em>managment</em>, and a typo in what you type is forgiven. If a word finds nothing, the screener suggests the closest word: <em>Did you mean python?</em></p>
 
 <h2>Privacy and error reports</h2>
 <p>CVs and candidate details are never sent anywhere. If something breaks, only the error message is sent to the developer, anonymously, without names, file names or CV text. Something else to tell us? Use <em>Report a problem</em> in the screener.</p>

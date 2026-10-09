@@ -118,3 +118,14 @@ button.link.small{font-size:13px;padding:4px 0}
 .te-move .none-btn{background:#fde7e5;color:#a1271c}
 .te-move .current{outline:2px solid currentColor}
 .te-actions{display:flex;justify-content:space-between;margin-top:10px}
+
+/* ---------- two indicators, did-you-mean ---------- */
+.verdicts{display:grid;gap:4px}
+.verdicts section{border:1px solid var(--line);border-radius:10px;padding:4px 12px;margin:6px 0}
+.verdicts h3{font-size:15px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.dym{background:#fff7e6;border:1px dashed #e0b45a;color:#7a5200;border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer}
+#vacDialog{width:min(640px,95vw)}
+#vacDialog textarea{width:100%;margin-top:8px}
+#vacDialog label{display:block;font-size:13px;color:var(--muted)}
+#vacDialog input{width:100%;margin-top:4px}
+#intake .row button.ghost{padding:7px 12px}

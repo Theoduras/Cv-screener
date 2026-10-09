@@ -112,3 +112,16 @@ export const PLACEHOLDERS = [
 ];
 
 export const AI_PRODUCERS = /(chatgpt|openai|gpt-?\d|claude|gemini|bard|copilot|kickresume|rezi|resume\.io|zety|enhancv|teal|resumeworded|novoresume|cvmaker|jobscan|careerflow|huntr|wonsulting|aiapply|lazyapply|simplify)/i;
+
+// Tools that send applications automatically and/or rewrite the CV per vacancy.
+export const AUTO_APPLY = /(lazy ?apply|ai ?apply|sonara|job ?copilot|massive\.?app|loopcv|jobhire|simplify ?(copilot|jobs)?|bulk ?apply|auto[- ]?apply|apply ?pilot|jobright|jobsolv|wonsulting|careerflow|huntr)/i;
+// File names / PDF titles that say the CV was generated for one specific vacancy.
+export const TAILOR_FILE_HINT = /(tailor|optimi[sz]ed|ats[-_ ]?(friendly|optimi[sz]ed|ready)|for[-_ ]?(the[-_ ]?)?(job|vacancy|role|position)|job[-_ ]?match)/i;
+// Text that tailoring tools leave behind.
+export const TAILOR_ARTEFACTS = [
+  /\bats[- ]?(friendly|optimi[sz]ed|compliant|ready)\b/i,
+  /\btailored (to|for) (this|the|your) (role|position|job|vacancy|opening)\b/i,
+  /\boptimi[sz]ed for (ats|the job description|this (role|position|vacancy))\b/i,
+  /\b(based on|matching) the job description\b/i,
+  /\bafgestemd op (deze|de) vacature\b/i,
+];
