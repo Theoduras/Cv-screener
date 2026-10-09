@@ -55,6 +55,22 @@ await app.click('tbody tr:first-child');
 await app.screenshot({ path: out('3-ai-explanation.png') });
 await app.click('#closeDrawer');
 
+// custom search: query + saved searches + help, then the highlighted CV
+for (const [name, q] of [['Data roles 5+ yrs', '(python OR sql OR "power bi") years:>=5 -intern'], ['Recruiters, low AI', 'recruit* ai:<40']]) {
+  await app.fill('#fq', q);
+  app.once('dialog', d => d.accept(name));
+  await app.click('#saveSearch');
+}
+await app.click('.chip-apply');
+await app.click('#qhelpBtn');
+await app.screenshot({ path: out('7-custom-search.png') });
+await app.click('#qhelpBtn');
+await app.click('tbody tr:nth-child(2)');
+await app.$eval('#drawer pre', el => el.scrollIntoView({ block: 'center' }));
+await app.screenshot({ path: out('8-search-highlight.png') });
+await app.click('#closeDrawer');
+await app.click('#reset');
+
 const pop = await ctx.newPage();
 await pop.setViewportSize({ width: 260, height: 150 });
 await pop.goto(`chrome-extension://${id}/popup.html`);

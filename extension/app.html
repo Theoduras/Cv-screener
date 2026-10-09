@@ -28,7 +28,7 @@
 </section>
 
 <section id="filters">
-  <input id="fq" placeholder="Search name, email, text…">
+  <span class="qwrap"><input id="fq" placeholder='Search: python OR sql -intern "driver&#39;s licence" years:>=5' autocomplete="off"><button id="qhelpBtn" class="ghost icon" type="button" title="Search syntax">?</button></span>
   <input id="floc" placeholder="Location">
   <select id="flang"><option value="">Any language</option></select>
   <input id="fskills" placeholder="Skills, comma-separated">
@@ -36,12 +36,27 @@
   <label>Years <input id="fmin" type="number" min="0" placeholder="min"> – <input id="fmax" type="number" min="0" placeholder="max"></label>
   <label>AI score ≤ <input id="fai" type="number" min="0" max="100" placeholder="100"></label>
   <select id="ftag"><option value="">All vacancies</option></select>
+  <button id="saveSearch" class="ghost" type="button">★ Save search</button>
   <button id="reset" class="ghost">Clear filters</button>
 </section>
+<div id="qhelp" hidden>
+  <strong>Search syntax</strong> – click an example to try it
+  <ul>
+    <li><code>nurse utrecht</code> both words</li>
+    <li><code>"driver's licence"</code> exact phrase</li>
+    <li><code>(sap OR oracle) consultant</code> either, grouped</li>
+    <li><code>recruit* -intern</code> prefix, and exclude a word</li>
+    <li><code>skill:python loc:amsterdam lang:english</code> search one field</li>
+    <li><code>years:>=5 ai:<30 edu:master</code> numbers and education</li>
+  </ul>
+  <span class="note">Fields: name, email, phone, loc, skill, lang, edu, tag, file, text, years, ai. Words match whole words; Dutch and English both work.</span>
+</div>
+<div id="qhint" class="qhint"></div>
+<div id="saved"></div>
 
 <table id="tbl">
   <thead><tr>
-    <th data-k="name">Name</th><th data-k="location">Location</th><th data-k="languages">Languages</th>
+    <th data-k="name">Name</th><th id="matchedTh" hidden>Matched</th><th data-k="location">Location</th><th data-k="languages">Languages</th>
     <th data-k="years">Years</th><th data-k="skills">Skills</th><th data-k="education">Education</th>
     <th data-k="ai">AI score</th><th data-k="tag">Vacancy</th><th data-k="addedAt">Added</th>
   </tr></thead>

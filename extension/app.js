@@ -3,11 +3,12 @@ import { extract, fileKind, ExtractError } from './lib/extract.js';
 import { parseCV } from './lib/parse.js';
 import { aiScore, textHash } from './lib/aiscore.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
+import { compile, highlight } from './lib/query.js';
 
 installGlobalHandlers();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false;
+let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [];
 
 const uid = () => crypto.randomUUID();
 const store = (k, v) => chrome.storage.local.set({ [k]: v });
@@ -80,7 +81,7 @@ async function drainInbox() {
 
 // ---------- filtering / rendering ----------
 const F = () => ({
-  q: $('#fq').value.trim().toLowerCase(), loc: $('#floc').value.trim().toLowerCase(), lang: $('#flang').value,
+  loc: $('#floc').value.trim().toLowerCase(), lang: $('#flang').value,
   skills: $('#fskills').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), mode: $('#fmode').value,
   min: $('#fmin').value === '' ? null : +$('#fmin').value, max: $('#fmax').value === '' ? null : +$('#fmax').value,
   ai: $('#fai').value === '' ? null : +$('#fai').value, tag: $('#ftag').value,
@@ -88,8 +89,9 @@ const F = () => ({
 
 function filtered() {
   const f = F();
+  query = compile($('#fq').value);
   return rows.filter(r => {
-    if (f.q && !`${r.name} ${r.email} ${r.fileName} ${r.text}`.toLowerCase().includes(f.q)) return false;
+    if (query.active && (r.error || !query.test(r))) return false;
     if (f.loc && !(r.location || '').toLowerCase().includes(f.loc)) return false;
     if (f.lang && !(r.languages || []).includes(f.lang) && r.cvLanguage !== f.lang) return false;
     if (f.skills.length) {
@@ -112,11 +114,17 @@ function filtered() {
 function render() {
   const list = filtered();
   $('#count').textContent = `${list.length} of ${rows.length} CVs`;
+  const q = query.active;
+  $('#qhint').className = query.error ? 'qhint bad' : 'qhint';
+  $('#qhint').textContent = query.error || (q ? `Searching for: ${query.terms.map(t => t.label).join(' · ')}` : '');
+  $('#matchedTh').hidden = !q;
+  const matchedCell = r => q ? `<td class="matched">${query.matched(r).map(l => `<span class="hit">${esc(l)} ✓</span>`).join(' ')}</td>` : '';
   $('#empty').hidden = rows.length > 0;
   $('#tbl tbody').innerHTML = list.map(r => r.error ? `
-    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="5">⚠ ${esc(r.error)}</td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
+    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
     <tr data-id="${r.id}">
       <td>${esc(r.name || '(unknown)')}<div class="note">${esc(r.email)}</div></td>
+      ${matchedCell(r)}
       <td>${esc(r.location)}</td>
       <td>${esc((r.languages.length ? r.languages : [r.cvLanguage]).filter(Boolean).join(', '))}</td>
       <td>${r.years || ''}</td>
@@ -158,7 +166,8 @@ function openDrawer(id) {
     <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>
     <p class="note">An indication, not proof. Use it to prioritise, not to reject.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    <h3>Text</h3><pre>${esc(r.text)}</pre>`}
+    ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).join(', ') || 'none')}</p>` : ''}
+    <h3>Text</h3><pre>${highlight(esc(r.text), query.terms)}</pre>`}
     <button class="danger" id="delOne">Delete this candidate</button>`;
   $('#delOne').onclick = async () => { await db.remove(id); $('#drawer').hidden = true; refresh(); };
   $('#drawer').hidden = false;
@@ -200,7 +209,7 @@ drop.ondrop = async e => { e.preventDefault(); drop.classList.remove('over'); in
 $('#files').onchange = e => { ingest([...e.target.files]); e.target.value = ''; };
 $('#folder').onchange = e => { ingest([...e.target.files]); e.target.value = ''; };
 $('#filters').oninput = render;
-$('#reset').onclick = () => { $('#filters').querySelectorAll('input').forEach(i => i.value = ''); $('#filters').querySelectorAll('select').forEach(s => s.selectedIndex = 0); render(); };
+$('#reset').onclick = () => { $('#fq').value = ''; $('#filters').querySelectorAll('input').forEach(i => i.value = ''); $('#filters').querySelectorAll('select').forEach(s => s.selectedIndex = 0); render(); };
 document.querySelector('thead').onclick = e => {
   const k = e.target.dataset.k; if (!k) return;
   sortAsc = sortKey === k ? !sortAsc : k === 'name' || k === 'location'; sortKey = k; render();
@@ -234,8 +243,34 @@ chrome.runtime.onMessage.addListener((m, _s, reply) => {
 });
 chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.inbox?.newValue?.length) drainInbox(); });
 
+// ---------- saved searches ----------
+const FILTER_IDS = ['fq', 'floc', 'flang', 'fskills', 'fmode', 'fmin', 'fmax', 'fai', 'ftag'];
+function renderSaved() {
+  $('#saved').innerHTML = saved.map((s, i) =>
+    `<span class="chip"><button class="chip-apply" data-i="${i}" title="${esc(s.state.fq || '')}">${esc(s.name)}</button><button class="chip-del" data-i="${i}" aria-label="Delete ${esc(s.name)}">×</button></span>`).join('');
+}
+$('#saveSearch').onclick = async () => {
+  const name = prompt('Name this search (e.g. "Senior data – Utrecht")');
+  if (!name?.trim()) return;
+  const state = Object.fromEntries(FILTER_IDS.map(id => [id, $('#' + id).value]));
+  saved = [...saved.filter(s => s.name !== name.trim()), { name: name.trim(), state }];
+  await store('savedSearches', saved);
+  renderSaved();
+};
+$('#saved').onclick = async e => {
+  const i = +e.target.dataset.i;
+  if (e.target.classList.contains('chip-del')) { saved.splice(i, 1); await store('savedSearches', saved); renderSaved(); return; }
+  if (!e.target.classList.contains('chip-apply')) return;
+  for (const [id, v] of Object.entries(saved[i].state)) { const el = $('#' + id); if (el) el.value = v; }
+  render();
+};
+$('#qhelpBtn').onclick = () => { $('#qhelp').hidden = !$('#qhelp').hidden; };
+$('#qhelp').onclick = e => { const ex = e.target.closest('code'); if (ex) { $('#fq').value = ex.textContent; render(); } };
+
 (async () => {
   extraSkills = await load('extraSkills', []);
+  saved = await load('savedSearches', []);
+  renderSaved();
   await refresh();
   await drainInbox();
 })().catch(e => report(e, { step: 'init' }));

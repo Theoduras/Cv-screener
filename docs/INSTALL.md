@@ -27,6 +27,22 @@ CV Screener is a Chrome extension that reads, sorts and filters large piles of C
 - **Export CSV** downloads the filtered list. It opens straight in Excel.
 - Under **Custom skills** you can add skills that aren't recognised yet.
 
+**Search for your own terms**
+
+Type in the search box. Click **?** next to it for examples you can click.
+
+| Type | Finds |
+|---|---|
+| `nurse utrecht` | CVs containing both words |
+| `"driver's licence"` | that exact phrase |
+| `(sap OR oracle) consultant` | either word, plus "consultant" |
+| `recruit* -intern` | recruiter / recruitment…, but not "intern" |
+| `skill:python loc:amsterdam lang:english` | only in that field |
+| `years:>=5 ai:<30 edu:master` | numbers and education level |
+
+Fields: `name`, `email`, `phone`, `loc`, `skill`, `lang`, `edu`, `tag`, `file`, `text`, `years`, `ai`. Dutch terms work too (`rijbewijs`, `"BIG-registratie"`).
+A **Matched** column shows which terms each CV hit, and the matching words are highlighted in the CV text. Use **★ Save search** to keep a search (with all its filters) as a one-click chip.
+
 **The AI score (0–100)**
 - Green (< 25) means few signals, orange (25–54) some, red (≥ 55) many.
 - Hover over the score or open the candidate to see *why*. Typical signals are AI wording ("results-driven", "proven track record"), leftover template text such as "[Company Name]", very uniform sentences, the tool the PDF was made with, and exactly the same text as another applicant.

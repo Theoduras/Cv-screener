@@ -36,3 +36,18 @@ footer{padding:16px 20px;color:var(--muted);font-size:12px;display:flex;gap:12px
 .note{font-size:12px;color:var(--muted)}
 dialog{border:1px solid var(--line);border-radius:12px;width:min(420px,95vw)}
 dialog textarea{width:100%}
+.qwrap{display:flex;gap:4px;flex:1 1 100%}
+.qwrap input{flex:1}
+button.icon{padding:6px 10px}
+#qhelp{margin:0 20px 10px;padding:10px 14px;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:13px}
+#qhelp ul{margin:6px 0;padding-left:18px;columns:2}
+#qhelp code{background:#f3f0ff;padding:1px 6px;border-radius:5px;cursor:pointer}
+.qhint{margin:0 20px 8px;font-size:12px;color:var(--muted);min-height:1em}
+.qhint.bad{color:var(--high)}
+#saved{display:flex;flex-wrap:wrap;gap:6px;margin:0 20px 10px}
+.chip{display:inline-flex;border:1px solid var(--accent);border-radius:999px;overflow:hidden}
+.chip button{background:transparent;color:var(--accent);border:0;border-radius:0;padding:4px 10px;font-size:13px}
+.chip .chip-del{padding:4px 8px;border-left:1px solid var(--line)}
+td.matched{white-space:nowrap}
+.hit{display:inline-block;background:#e8f6ee;color:var(--low);border-radius:6px;padding:1px 6px;margin:1px 0;font-size:12px}
+mark{background:#ffe58a;border-radius:3px;padding:0 1px}
