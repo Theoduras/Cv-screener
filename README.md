@@ -8,6 +8,14 @@ Chrome extension for screening large volumes of CVs on top of any ATS (Oleeo and
 - **Captures** a candidate straight from the open ATS page, using the recruiter's own session.
 - **Runs locally.** CVs never leave the browser, and there is no API key or cost. Only anonymous error reports are sent; they become GitHub issues in this repo.
 
+![Overview](docs/screenshots/1-overzicht.png)
+
+| Why a CV scores high | Popup in the browser |
+|---|---|
+| ![AI explanation](docs/screenshots/3-ai-uitleg.png) | ![Popup](docs/screenshots/4-popup.png) |
+
+More: [filtered](docs/screenshots/2-filter.png) · [download page](docs/screenshots/5-downloadpagina.png) · [on a phone](docs/screenshots/6-downloadpagina-mobiel.png). Regenerate with `node tools/screenshots.mjs`.
+
 | For | Read |
 |---|---|
 | Testers | [docs/INSTALL.md](docs/INSTALL.md) (also served as the Vercel page) |
