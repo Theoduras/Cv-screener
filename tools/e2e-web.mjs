@@ -18,7 +18,7 @@ const srv = createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' });
   res.end(readFileSync(p));
 }).listen(0);
-const base = `http://localhost:${srv.address().port}`;
+const base = process.env.BASE_URL || `http://localhost:${srv.address().port}`;
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext();
