@@ -105,6 +105,10 @@ Drop cover letters together with the CVs. You don't need to sort them first.
   2. Click the CV Screener icon → **Collect vacancies from this page**. It reads only the ads you can see, plus the full text of the one you have open.
 - **How sites are read.** In the web version, sites are read through a small helper on our server, because a web page can't read other sites itself. It only fetches public pages and honours each site's robots.txt. A site that asks not to be read shows ⚠ with the reason. The extension reads sites itself and asks Chrome's permission once per site.
 
+**Dark mode and phones**
+- The **🌓 Auto** button at the top follows your device's light or dark setting. Click it to switch to **🌙 Dark** or **☀️ Light** instead. The choice is remembered on that device.
+- The web version works on a phone. Candidates show as cards, you sort with the *Sort* dropdown, and *Select all shown* sits above the list. The candidate opens full screen; close it with the × at the top right. *Choose files* opens your phone's files (iCloud, Google Drive, downloads). Picking a whole folder only works on a computer.
+
 ## 3. Privacy
 
 - CVs and candidate details are never sent anywhere. They exist only in this browser. Lists and found vacancies are stored there too.

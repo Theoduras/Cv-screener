@@ -71,7 +71,7 @@ export function renderJobs() {
     return `<tr data-id="${j.id}">
       <td><b>${esc(j.title)}</b>${prevRun && j.firstSeen > prevRun ? ' <span class="new">new</span>' : ''}${n ? ` <span class="list-tag" title="Candidates on the shortlist for this vacancy">📋 ${n}</span>` : ''}
         <div class="note">${esc((j.text || '').slice(0, 160))}${(j.text || '').length > 160 ? '…' : ''}</div></td>
-      <td>${esc(j.company)}</td><td>${esc(j.location)}</td><td>${esc(j.posted)}</td><td class="note">${esc(j.source)}</td>
+      <td data-label="Company">${esc(j.company)}</td><td data-label="Location">${esc(j.location)}</td><td data-label="Posted">${esc(j.posted)}</td><td class="note" data-label="Site">${esc(j.source)}</td>
       <td class="job-actions"><button type="button" class="small" data-use="${j.id}" title="Use this ad as the vacancy text, so CVs that copy it are flagged">Use as vacancy</button>
         ${j.url ? `<a class="btn ghost small" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>` : ''}
         <button type="button" class="ghost small" data-hide="${j.id}" title="Hide this ad">Hide</button></td></tr>`;

@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>CV Screener</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#faf9fd" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#121018" media="(prefers-color-scheme: dark)">
+<script src="theme.js"></script>
 <link rel="stylesheet" href="app.css">
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/mammoth.browser.min.js"></script>
@@ -10,6 +12,7 @@
   <h1>CV Screener</h1>
   <span id="count"></span>
   <span class="spacer"></span>
+  <button id="themeBtn" class="ghost" type="button">🌓 Auto</button>
   <button id="settingsBtn" class="ghost">Custom skills</button>
   <button id="reportBtn" class="ghost">Report a problem</button>
   <button id="exportBtn">Export CSV</button>
@@ -107,6 +110,13 @@
   <div class="te-actions"><button type="button" id="te-delete" class="danger">Remove word</button><button type="button" id="te-done">Done</button></div>
 </div>
 
+<div class="mobile-tools">
+  <label class="sel-all-m"><input type="checkbox" id="selAllM"> Select all shown</label>
+  <label>Sort <select id="sortM">
+    <option value="addedAt:desc">Newest first</option><option value="name:asc">Name A–Z</option><option value="years:desc">Most experience</option>
+    <option value="location:asc">Location</option><option value="ai:asc">Least AI first</option><option value="ai:desc">Most AI first</option><option value="tool:desc">Most tool signals first</option>
+  </select></label>
+</div>
 <table id="tbl">
   <thead><tr>
     <th class="sel"><input type="checkbox" id="selAll" aria-label="Select every candidate shown"></th><th data-k="name">Name</th><th id="matchedTh" hidden>Matched</th><th data-k="location">Location</th><th data-k="languages">Languages</th>

@@ -10,7 +10,7 @@ rm -f site/cv-screener.zip
 (cd extension && zip -qr ../site/cv-screener.zip . -x '.*')
 
 rm -rf site/app && mkdir -p site/app
-cp -r extension/lib extension/vendor extension/app.js extension/vacancies.js extension/app.css extension/config.js extension/icon.png site/app/
+cp -r extension/lib extension/vendor extension/app.js extension/vacancies.js extension/theme.js extension/app.css extension/config.js extension/icon.png site/app/
 # the fetch proxy shares the robots.txt reader and the blocked-sites list with the finder
 cp extension/lib/jobs.js site/api/_jobs.js
 sed "s|<meta charset=\"utf-8\">|<meta charset=\"utf-8\"><meta name=\"cvs-version\" content=\"$version-web\"><link rel=\"icon\" href=\"icon.png\">|" extension/app.html > site/app/index.html

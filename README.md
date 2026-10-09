@@ -11,6 +11,7 @@ Screen large volumes of CVs on top of any ATS (Oleeo and others), as a **web pag
 - **Captures** a candidate straight from the open ATS page, using the recruiter's own session.
 - **Lists and shortlists**: tick candidates (shift-click for a range), add them to a named list or to a vacancy, filter on a list, export the ticked ones.
 - **Finds vacancies** on careers pages, job-board search results, RSS feeds and Greenhouse / Lever / SmartRecruiters / Workable / Recruitee / Personio boards, from schema.org JobPosting data or the board APIs. LinkedIn, Indeed and boards that forbid crawlers are never crawled: the extension's *Collect vacancies from this page* reads the tab the recruiter has open. The web version reads other sites through `/api/fetch`, which refuses private addresses (also after redirects and through DNS), honours robots.txt, and has size, type and rate limits.
+- **Dark mode** (follows the device, or chosen with a button) and a **phone layout** for the web version: cards instead of tables, full-screen candidate panel, 16px inputs.
 - **Runs locally.** CVs never leave the browser, and there is no API key or cost. Only anonymous error reports are sent; they become GitHub issues in this repo.
 
 ![Overview](docs/screenshots/1-overview.png)

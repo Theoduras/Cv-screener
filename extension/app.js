@@ -193,7 +193,7 @@ function render() {
   $('#qhint').className = query.error ? 'qhint bad' : 'qhint';
   $('#qhint').textContent = query.error || '';
   $('#matchedTh').hidden = !q;
-  const matchedCell = r => q ? `<td class="matched">${query.matched(r).map(l => `<span class="hit">${esc(plainLabel(l))} ✓</span>`).join(' ')}</td>` : '';
+  const matchedCell = r => q ? `<td class="matched" data-label="Matched">${query.matched(r).map(l => `<span class="hit">${esc(plainLabel(l))} ✓</span>`).join(' ')}</td>` : '';
   $('#empty').hidden = rows.length > 0;
   shownIds = list.map(r => r.id);
   const sel = r => `<td class="sel"><input type="checkbox" class="rowsel" data-id="${r.id}"${selected.has(r.id) ? ' checked' : ''} aria-label="Select ${esc(r.name || r.fileName)}"></td>`;
@@ -203,15 +203,15 @@ function render() {
     <tr data-id="${r.id}"${selected.has(r.id) ? ' class="is-sel"' : ''}>${sel(r)}
       <td>${esc(r.name || '(unknown)')}${r.letters.length ? ' <span class="doc-mark" title="Has a cover letter">📝</span>' : ''}${r.letterOnly ? ' <span class="doc-only">cover letter only</span>' : ''}${onLists(r)}<div class="note">${esc(r.email)}</div></td>
       ${matchedCell(r)}
-      <td>${esc(r.location)}</td>
-      <td>${esc((r.languages.length ? r.languages : [r.cvLanguage]).filter(Boolean).join(', '))}</td>
-      <td>${r.years || ''}</td>
-      <td class="skills">${esc(r.skills.slice(0, 12).join(', '))}${r.skills.length > 12 ? ' …' : ''}</td>
-      <td>${esc(r.education)}</td>
-      <td><span class="ai ${r.aiRes.level}" title="Written by AI?${r.letters.length ? ` (worst: ${r.aiRes.from})` : ''}\n${esc(r.aiRes.reasons.join('\n') || 'No signals')}">${r.aiRes.score}</span></td>
-      <td><span class="ai ${r.tailRes.level}" title="Sent or tailored by a tool?${r.letters.length ? ` (worst: ${r.tailRes.from})` : ''}\n${esc(r.tailRes.reasons.join('\n') || 'No signals')}">${r.tailRes.score}</span></td>
-      <td>${esc(r.tag)}</td>
-      <td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td>
+      <td data-label="Location">${esc(r.location)}</td>
+      <td data-label="Languages">${esc((r.languages.length ? r.languages : [r.cvLanguage]).filter(Boolean).join(', '))}</td>
+      <td data-label="Years">${r.years || ''}</td>
+      <td class="skills" data-label="Skills">${esc(r.skills.slice(0, 12).join(', '))}${r.skills.length > 12 ? ' …' : ''}</td>
+      <td data-label="Education">${esc(r.education)}</td>
+      <td class="score" data-label="🤖 AI"><span class="ai ${r.aiRes.level}" title="Written by AI?${r.letters.length ? ` (worst: ${r.aiRes.from})` : ''}\n${esc(r.aiRes.reasons.join('\n') || 'No signals')}">${r.aiRes.score}</span></td>
+      <td class="score" data-label="📨 Tool"><span class="ai ${r.tailRes.level}" title="Sent or tailored by a tool?${r.letters.length ? ` (worst: ${r.tailRes.from})` : ''}\n${esc(r.tailRes.reasons.join('\n') || 'No signals')}">${r.tailRes.score}</span></td>
+      <td data-label="Vacancy">${esc(r.tag)}</td>
+      <td data-label="Added">${new Date(r.addedAt).toLocaleDateString('en-GB')}</td>
     </tr>`).join('');
   document.querySelectorAll('th').forEach(th => {
     th.classList.toggle('sorted', th.dataset.k === sortKey);
@@ -557,10 +557,14 @@ function renderSelection() {
   const shownSel = shownIds.filter(id => selected.has(id)).length;
   $('#selAll').checked = shownIds.length > 0 && shownSel === shownIds.length;
   $('#selAll').indeterminate = shownSel > 0 && shownSel < shownIds.length;
+  $('#selAllM').checked = $('#selAll').checked; $('#selAllM').indeterminate = $('#selAll').indeterminate;
   $('#selBar').hidden = !selected.size;
   $('#selCount').innerHTML = `<b>${selected.size}</b> selected${selected.size > shownSel ? ` <span class="note">(${selected.size - shownSel} not in this view)</span>` : ''}`;
 }
 $('#selAll').onclick = e => { e.stopPropagation(); for (const id of shownIds) e.target.checked ? selected.add(id) : selected.delete(id); renderSelection(); };
+$('#selAllM').onchange = e => { for (const id of shownIds) e.target.checked ? selected.add(id) : selected.delete(id); renderSelection(); };
+// phones have no column headers to click: the same sorting as a dropdown
+$('#sortM').onchange = e => { const [k, dir] = e.target.value.split(':'); sortKey = k; sortAsc = dir === 'asc'; render(); };
 $('#selClear').onclick = () => { selected.clear(); renderSelection(); };
 $('#selExport').onclick = () => exportCsv(rows.filter(r => selected.has(r.id)));
 $('#selList').onclick = () => openAdd('list', [...selected]);

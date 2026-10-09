@@ -147,5 +147,62 @@ if (process.argv.includes('--shots')) {
   await land.goto(base + '/');
   await land.screenshot({ path: path.join(root, 'docs/screenshots/18-landing-choice.png') });
 }
+// ---------- dark mode and phones ----------
+{
+  const shots = process.argv.includes('--shots');
+  // desktop: the switch cycles Auto -> Dark -> Light and is remembered
+  await page.setViewportSize({ width: 1360, height: 900 });
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const light = await bg();
+  await page.click('#themeBtn');
+  ok(await page.evaluate(() => document.documentElement.dataset.theme) === 'dark' && await bg() !== light, 'theme switch: dark');
+  await page.reload(); await page.waitForSelector('#tbl tbody tr');
+  ok(await page.evaluate(() => document.documentElement.dataset.theme) === 'dark', 'dark choice remembered after reload');
+  if (shots) { await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: path.join(root, 'docs/screenshots/22-dark-mode.png') }); }
+  await page.click('#themeBtn');
+  ok(await page.evaluate(() => document.documentElement.dataset.theme) === 'light', 'theme switch: light');
+  await page.click('#themeBtn');
+  ok(!(await page.evaluate(() => document.documentElement.dataset.theme)), 'theme switch: back to auto');
+
+  // a phone with dark mode on: Auto follows it
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, colorScheme: 'dark' });
+  const m = await phone.newPage();
+  m.on('pageerror', e => errors.push('mobile: ' + e.message));
+  await m.route('**/api/report', r => { errors.push('REPORT ' + r.request().postData()); r.fulfill({ status: 200, body: '{}' }); });
+  await m.goto(base + '/app/');
+  await m.setInputFiles('#files', [fx('human-nl.docx'), fx('Thomas_Vermeulen_CV.pdf'), fx('Thomas_Vermeulen_Cover_Letter.pdf'), fx('ai-en.txt')]);
+  await m.waitForFunction(() => document.querySelectorAll('#tbl tbody tr').length === 3, null, { timeout: 30000 });
+  const dark = await m.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  ok(dark === 'rgb(18, 16, 24)', 'Auto follows the phone\'s dark mode: ' + dark);
+  const overflow = async () => m.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  ok(await overflow() <= 0, 'no sideways scrolling on a phone (candidates)');
+  ok(await m.$eval('#tbl thead', t => getComputedStyle(t).display) === 'none' && await m.$eval('#tbl tbody tr', t => getComputedStyle(t).display) === 'block', 'candidates are cards, not a table');
+  ok(await m.isVisible('#sortM'), 'sort dropdown instead of column headers');
+  await m.selectOption('#sortM', 'name:asc');
+  const names = await m.$$eval('#tbl tbody tr td:nth-child(2)', t => t.map(x => x.innerText.split('\n')[0].trim()));
+  ok(names.join() === [...names].sort((a, b) => a.localeCompare(b)).join(), 'sorting from the dropdown: ' + names.join(', '));
+  const tapTarget = await m.$eval('#tbl tbody tr td.sel', td => td.getBoundingClientRect().width);
+  ok(tapTarget >= 36, `checkbox easy to tap (${Math.round(tapTarget)}px)`);
+  await m.tap('#selAllM');
+  ok(await m.isVisible('#selBar') && (await m.textContent('#selCount')).startsWith('3 selected'), 'select all from the phone');
+  ok(await overflow() <= 0, 'selection bar fits');
+  if (shots) await m.screenshot({ path: path.join(root, 'docs/screenshots/23-phone-candidates.png') });
+  await m.tap('#selClear');
+  await m.tap('#tbl tbody tr:has-text("Thomas") td:nth-child(2)');
+  const d = await m.$eval('#drawer', e => e.getBoundingClientRect().width);
+  ok(d === 390, 'candidate panel uses the whole screen');
+  const x = await m.$eval('#closeDrawer', b => b.getBoundingClientRect().toJSON());
+  ok(x.right <= 390 && x.right > 340 && x.top < 40, '× reachable in the top-right corner');
+  if (shots) await m.screenshot({ path: path.join(root, 'docs/screenshots/24-phone-candidate.png') });
+  await m.tap('#closeDrawer');
+  ok(await m.$eval('#drawer', e => e.hidden), '× closes it on a phone');
+  await m.tap('#tabs [data-tab="vacs"]');
+  ok(await overflow() <= 0, 'no sideways scrolling on a phone (vacancies)');
+  const fontSize = await m.$eval('#vfUrl', i => parseFloat(getComputedStyle(i).fontSize));
+  ok(fontSize >= 16, 'inputs at 16px, so iPhones do not zoom in on tap');
+  if (shots) await m.screenshot({ path: path.join(root, 'docs/screenshots/25-phone-vacancies.png') });
+  await phone.close();
+}
+
 ok(!errors.length, 'no page errors / reports: ' + errors.join(' | '));
 await browser.close(); srv.close();
