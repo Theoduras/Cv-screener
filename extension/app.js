@@ -5,15 +5,16 @@ import { parseCV } from './lib/parse.js';
 import { aiScore, textHash, level, AI_VERSION } from './lib/aiscore.js';
 import { tailorScore, shingleSet, overlap } from './lib/tailor.js';
 import { docKind, linkLetters } from './lib/doctype.js';
+import { matchVacancy } from './lib/vacmatch.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
 import { compile, highlight, fromWords, plainLabel, termCode, suggest } from './lib/query.js';
 import { SKILLS } from './lib/dict.js';
-import { initVacancies, drainJobInbox, onShow as showVacancies, renderJobs, savedJobs, jobById } from './vacancies.js';
+import { initVacancies, drainJobInbox, onShow as showVacancies, renderJobs, refreshVacancies, savedJobs, jobById } from './vacancies.js';
 
 installGlobalHandlers();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let selected = new Set(), lastSel = null, shownIds = [], lists = [];
+let selected = new Set(), lastSel = null, shownIds = [], lists = [], vacancyMeta = {};
 let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], vacancies = {}, words = { all: [], groups: [[]], none: [] };
 
 const uid = () => crypto.randomUUID();
@@ -55,6 +56,12 @@ function polishGap(letter, cv) {
   return { ...letter, aiRes: { ...letter.aiRes, score, level: level(score), reasons: [...letter.aiRes.reasons, 'The letter reads far more polished than the CV (+10)'] } };
 }
 
+// Every vacancy the screener knows: added from Find vacancies, given a vacancy text, or typed when dropping CVs.
+const vacTitle = tag => vacancyMeta[tag]?.title || String(tag).split(' – ')[0];
+const vacancyList = list => [...new Set([...Object.keys(vacancies), ...list.map(r => r.tag)].filter(Boolean))]
+  .map(tag => ({ tag, title: vacTitle(tag), text: vacancies[tag] || '' }));
+const allVacancyNames = () => vacancyList(rows).map(v => v.tag).sort((a, b) => a.localeCompare(b));
+
 const worse = (a, b) => b && b.score > a.score ? b : a;
 
 function withDupes(list) {
@@ -82,13 +89,17 @@ function withDupes(list) {
     }
     return { ...d, aiRes: d.baseAi, tailRes: tailorScore(d, opts) };
   };
-  const out = [];
+  const out = [], vlist = vacancyList(list);
   for (const r of list) {
     if (r.error) { out.push({ ...r, aiRes: null, tailRes: null, letters: [] }); continue; }
     if (r.kind === 'letter' && links[r.id]) continue; // shown with its CV
-    const doc = score(r);
+    // no vacancy typed in when they came in: work out which one this application is for
+    const own = lettersOf[r.id] || [];
+    const auto = r.tag || r.noAuto ? null : matchVacancy({ text: r.kind === 'letter' ? '' : r.text, letterText: r.kind === 'letter' ? r.text : own.map(l => l.text).join('\n\n'), skills: r.skills }, vlist);
+    const vac = { tag: r.tag || auto?.tag || '', tagManual: r.tag || '', vacHow: r.tag ? 'manual' : auto?.how || '', vacWhy: auto?.why || '' };
+    const doc = { ...score({ ...r, tag: vac.tag }), ...vac };
     if (r.kind === 'letter') { out.push({ ...doc, letterOnly: true, letters: [], letterText: r.text }); continue; }
-    const letters = (lettersOf[r.id] || []).map(l => polishGap(score(l), doc));
+    const letters = own.map(l => polishGap(score({ ...l, tag: vac.tag }), doc));
     // the table shows the worse of CV and letter, and says which one it was
     const ai = letters.reduce((m, l) => worse(m, { ...l.aiRes, from: 'cover letter' }), { ...doc.aiRes, from: 'CV' });
     const tool = letters.reduce((m, l) => worse(m, { ...l.tailRes, from: 'cover letter' }), { ...doc.tailRes, from: 'CV' });
@@ -171,7 +182,7 @@ function filtered() {
       if (f.ai === 'hideBoth' && (ai || tool)) return false;
       if (f.ai === 'human' && (r.aiRes.level !== 'low' || r.tailRes.level !== 'low')) return false;
     }
-    if (f.tag && r.tag !== f.tag) return false;
+    if (f.tag && r.tag !== f.tag && !lists.some(l => l.vacancy === 'tag:' + f.tag && l.members.includes(r.id))) return false;
     if (f.list && !lists.find(l => l.id === f.list)?.members.includes(r.id)) return false;
     const hasLetter = r.letterOnly || r.letters?.length > 0;
     if (f.letter === 'has' && !hasLetter) return false;
@@ -210,7 +221,7 @@ function render() {
       <td data-label="Education">${esc(r.education)}</td>
       <td class="score" data-label="🤖 AI"><span class="ai ${r.aiRes.level}" title="Written by AI?${r.letters.length ? ` (worst: ${r.aiRes.from})` : ''}\n${esc(r.aiRes.reasons.join('\n') || 'No signals')}">${r.aiRes.score}</span></td>
       <td class="score" data-label="📨 Tool"><span class="ai ${r.tailRes.level}" title="Sent or tailored by a tool?${r.letters.length ? ` (worst: ${r.tailRes.from})` : ''}\n${esc(r.tailRes.reasons.join('\n') || 'No signals')}">${r.tailRes.score}</span></td>
-      <td data-label="Vacancy">${esc(r.tag)}</td>
+      <td data-label="Vacancy">${esc(r.tag)}${r.vacHow && r.vacHow !== 'manual' ? ` <span class="auto-link${r.vacHow === 'fit' ? ' guess' : ''}" title="${esc(r.vacWhy)}">${r.vacHow === 'fit' ? 'best guess' : 'auto'}</span>` : ''}</td>
       <td data-label="Added">${new Date(r.addedAt).toLocaleDateString('en-GB')}</td>
     </tr>`).join('');
   document.querySelectorAll('th').forEach(th => {
@@ -230,7 +241,9 @@ async function refresh() {
   rows = withDupes(await db.all());
   await pruneLists();
   fillSelect($('#flang'), [...new Set(rows.flatMap(r => [...(r.languages || []), r.cvLanguage]).filter(Boolean))].sort(), 'Any language');
-  fillSelect($('#ftag'), [...new Set(rows.map(r => r.tag).filter(Boolean))].sort(), 'All vacancies');
+  const cur = $('#ftag').value, names = allVacancyNames(), n = t => rows.filter(r => r.tag === t).length;
+  $('#ftag').innerHTML = '<option value="">All vacancies</option>' + names.map(t => `<option value="${esc(t)}">${esc(t)} (${n(t)})</option>`).join('');
+  $('#ftag').value = names.includes(cur) ? cur : '';
   renderLists();
   render();
 }
@@ -253,13 +266,18 @@ function openDrawer(id) {
        ...r.letters.map((l, i) => ({ label: r.letters.length > 1 ? `Cover letter ${i + 1}` : 'Cover letter', kind: 'letter', doc: l }))];
   const dl = [['Name', r.name], ['Email', r.email], ['Phone', r.phone], ['LinkedIn', r.linkedin], ['Location', r.location],
     ['Languages', (r.languages || []).join(', ')], ['CV written in', r.cvLanguage], ['Years of experience', r.years], ['Education', r.education],
-    ['Skills', (r.skills || []).join(', ')], ['Vacancy', r.tag], ['Source', `${r.source || ''} – ${r.fileName || ''}`], ['PDF made with', r.producer]];
+    ['Skills', (r.skills || []).join(', ')], ['Source', `${r.source || ''} – ${r.fileName || ''}`], ['PDF made with', r.producer]];
   $('#drawerBody').innerHTML = `
     <h2>${esc(r.name || r.fileName)}</h2>
     ${r.error ? `<p>⚠ ${esc(r.error)}</p>` : `
     ${verdicts(docs)}
     <p class="note">These are indications, not proof. Use them to prioritise, never to reject on their own – a candidate may tailor their own CV or letter to your vacancy, which is a good thing.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    <p class="vac-link"><label>📁 Vacancy <select id="drawerVacSel">
+      <option value="__auto"${!r.tagManual && !r.noAuto ? ' selected' : ''}>Let the screener decide${r.vacHow && r.vacHow !== 'manual' ? ` (now: ${esc(r.tag)})` : ''}</option>
+      <option value="__none"${r.noAuto && !r.tagManual ? ' selected' : ''}>Not linked to a vacancy</option>
+      ${allVacancyNames().map(t => `<option value="${esc(t)}"${r.tagManual === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}
+    </select></label>${r.vacWhy ? `<span class="note">Linked automatically: ${esc(r.vacWhy)}</span>` : ''}</p>
     <p class="on-lists">📋 ${listsOf(r.id).length ? 'On ' + listsOf(r.id).map(l => `<b>${esc(l.name)}</b>`).join(', ') : 'Not on a list yet'} · <button type="button" class="link small" id="drawerList">Add to a list</button> · <button type="button" class="link small" id="drawerVac">Add to a vacancy</button></p>
     ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).map(plainLabel).join(', ') || 'none')}</p>` : ''}
     <div class="doc-tabs" role="tablist">${docs.map((d, i) => `<button type="button" role="tab" class="doc-tab${i === 0 ? ' on' : ''}" data-doc="${i}">${d.label}</button>`).join('')}</div>
@@ -268,6 +286,12 @@ function openDrawer(id) {
       <pre>${highlight(esc(d.doc.text), query.terms, { ...r, text: d.doc.text, letterText: '' })}</pre></div>`).join('')}`}
     <button class="danger" id="delOne">Delete this candidate${r.letters?.length ? ' and their cover letter' : ''}</button>`;
   $('#drawerList')?.addEventListener('click', () => openAdd('list', [r.id]));
+  $('#drawerVacSel')?.addEventListener('change', async e => {
+    const v = e.target.value, all = await db.all();
+    const tag = v.startsWith('__') ? '' : v, noAuto = v === '__none';
+    for (const d of [r, ...(r.letters || [])]) { const rec = all.find(x => x.id === d.id); if (rec) await db.put({ ...rec, tag, noAuto }); }
+    await refresh(); openDrawer(r.id);
+  });
   $('#drawerVac')?.addEventListener('click', () => openAdd('vacancy', [r.id]));
   $('#delOne').onclick = async () => { for (const d of [r, ...(r.letters || [])]) await db.remove(d.id); $('#drawer').hidden = true; refresh(); };
   $('#drawerBody').querySelectorAll('.doc-tab').forEach(t => t.onclick = () => {
@@ -664,14 +688,30 @@ function showTab(name) {
 }
 $('#tabs').onclick = e => { const t = e.target.closest('.tab'); if (t) showTab(t.dataset.tab); };
 
-// a found ad becomes the vacancy text for a req, which the 📨 copy check compares CVs against
-function useAsVacancy(job) {
-  if (!job) return;
-  $('#vacTags').innerHTML = [...new Set([...rows.map(r => r.tag), ...Object.keys(vacancies)].filter(Boolean))].map(t => `<option value="${esc(t)}">`).join('');
-  $('#vacTag').value = `${job.title}${job.company ? ' – ' + job.company : ''}`.slice(0, 80);
-  $('#vacText').value = job.text || `${job.title}\n${job.company}\n${job.location}`;
-  $('#vacDialog').showModal();
+// Several found ads become vacancies in one go; candidates then link themselves to the right one.
+const vacKey = j => {
+  let key = `${j.title}${j.company ? ' – ' + j.company : ''}`.slice(0, 90);
+  if (vacancyMeta[key] && vacancyMeta[key].jobId !== j.id) key = `${key} (${j.location || j.id.slice(-4)})`;
+  return key;
+};
+async function addVacancies(ads) {
+  let added = 0;
+  for (const j of ads) {
+    const existing = Object.keys(vacancyMeta).find(k => vacancyMeta[k].jobId === j.id);
+    const key = existing || vacKey(j);
+    if (!existing) added++;
+    vacancies[key] = j.text || `${j.title}\n${j.company}\n${j.location}`;
+    vacancyMeta[key] = { title: j.title, company: j.company, location: j.location, url: j.url, jobId: j.id };
+  }
+  await store('vacancies', vacancies); await store('vacancyMeta', vacancyMeta);
+  await refresh();
+  const linked = rows.filter(r => r.vacHow && r.vacHow !== 'manual').length;
+  toast(`${added} vacanc${added === 1 ? 'y' : 'ies'} added. ${linked} candidate${linked === 1 ? ' is' : 's are'} now linked to a vacancy automatically.`);
+  refreshVacancies();
 }
+
+// a found ad becomes the vacancy text for a req, which the 📨 copy check compares CVs against
+const useAsVacancy = job => job && addVacancies([job]);
 
 // ---------- saved searches ----------
 const FILTER_IDS = ['fq', 'floc', 'flang', 'fmin', 'fmax', 'fai', 'ftag', 'flist'];
@@ -728,11 +768,13 @@ $('#vacSave').onclick = async () => {
   vacancies = await load('vacancies', {});
   saved = await load('savedSearches', []);
   lists = await load('lists', []);
+  vacancyMeta = await load('vacancyMeta', {});
   // the AI check improved since these were stored: score them again
   const stale = (await db.all()).filter(r => !r.error && r.aiVersion !== AI_VERSION);
   if (stale.length) await db.put(stale.map(analyse));
   renderSaved();
-  await initVacancies({ useAsVacancy, listCount: id => new Set(lists.filter(l => l.vacancy === 'job:' + id).flatMap(l => l.members)).size });
+  await initVacancies({ useAsVacancy, addVacancies, vacancyOf: jobId => Object.keys(vacancyMeta).find(k => vacancyMeta[k].jobId === jobId),
+    candidateCount: tag => rows.filter(r => r.tag === tag).length, listCount: id => new Set(lists.filter(l => l.vacancy === 'job:' + id).flatMap(l => l.members)).size });
   await refresh();
   if (isExtension) await drainInbox();
   else document.body.classList.add('is-web');

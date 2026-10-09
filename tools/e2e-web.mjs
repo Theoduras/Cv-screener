@@ -95,8 +95,8 @@ if (!live) {
   await page.fill('#vfWords', 'recruiter');
   ok(await jobRows() === 1, 'keyword filter');
   await page.click('#jobsTbl [data-use]');
-  ok(await page.$eval('#vacDialog', d => d.open) && (await page.inputValue('#vacText')).includes('Ervaring met Oleeo'), '"Use as vacancy" fills in the vacancy text');
-  await page.click('#vacSave');
+  ok(await page.waitForSelector('#jobsTbl .is-vac', { timeout: 3000 }).catch(() => null), '"Add as vacancy" makes the ad a vacancy in one tap');
+  ok((await page.$$eval('#ftag option', o => o.map(x => x.textContent))).some(t => t.startsWith('Recruiter (32-40 uur) – Groen & Co')), 'and it is in the Vacancy filter straight away (the bug from the phone)');
   // a word no title has: say why nothing shows, and offer the way back
   await page.fill('#vfWords', 'verkoop');
   ok(await jobRows() === 0 && (await page.textContent('#jobsNone')).includes('None of the 3 vacancies has “verkoop” in the job title'), 'an empty result explains itself');
@@ -108,6 +108,33 @@ if (!live) {
   await search();
   ok(await jobRows() === 3, 'ads a site found for "verkoop" stay visible (the bug from the phone: 0 of 21)');
   await page.fill('#vfWords', '');
+  // every ad of a site at once, then candidates link themselves to the one they applied for
+  await page.click('#vfSources .src-addall');
+  await page.waitForFunction(() => document.querySelectorAll('#jobsTbl .is-vac').length === 3, null, { timeout: 5000 });
+  ok(true, '"Add all as vacancies" adds every ad of that site');
+  if (process.argv.includes('--shots')) { await page.evaluate(() => { document.querySelector('#vfSources').scrollIntoView(); scrollBy(0, -20); }); await page.screenshot({ path: path.join(root, 'docs/screenshots/26-add-all-vacancies.png') }); }
+  await page.click('#tabs [data-tab="cands"]');
+  await page.setInputFiles('#files', [fx('cv-nurse.txt'), fx('letter-nurse.txt')]);
+  await page.waitForFunction(() => document.querySelector('#tbl tbody').textContent.includes('Fatima'), null, { timeout: 15000 });
+  const nurse = await page.textContent('#tbl tbody tr:has-text("Fatima")');
+  ok(nurse.includes('Verpleegkundige – Groen & Co Zorg') && nurse.includes('auto'), 'a candidate whose letter applies for "Verpleegkundige" is linked to that vacancy');
+  if (process.argv.includes('--shots')) {
+    await page.click('#tbl tbody tr:has-text("Fatima") td:nth-child(2)');
+    await page.evaluate(() => { document.querySelector('#resultLine').scrollIntoView(); scrollBy(0, -70); });
+    await page.screenshot({ path: path.join(root, 'docs/screenshots/27-linked-to-vacancy.png') });
+    await page.keyboard.press('Escape');
+  }
+  await page.selectOption('#ftag', 'Verpleegkundige – Groen & Co Zorg');
+  ok(await page.$$eval('#tbl tbody tr', t => t.length) === 1, 'the Vacancy filter shows that candidate');
+  await page.click('#tbl tbody tr td:nth-child(2)');
+  ok((await page.textContent('.vac-link')).includes('Says they apply for'), 'the panel says why it was linked');
+  await page.selectOption('#drawerVacSel', '__none');
+  await page.waitForFunction(() => !document.querySelector('#tbl tbody').textContent.includes('Fatima'), null, { timeout: 5000 }).catch(() => {});
+  ok(await page.$$eval('#tbl tbody tr', t => t.length) === 0, 'and can be unlinked by hand');
+  await page.keyboard.press('Escape');
+  await page.selectOption('#ftag', '');
+  await page.click('#tabs [data-tab="vacs"]');
+  ok((await page.textContent('#jobsTbl')).includes('👥'), 'each vacancy shows how many candidates it has');
 }
 // real sites: a Greenhouse board (read straight from the browser) and YoungCapital (through /api/fetch, robots.txt honoured)
 await addSource('https://boards.greenhouse.io/gitlab');

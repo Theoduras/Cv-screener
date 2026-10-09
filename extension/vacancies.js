@@ -38,6 +38,11 @@ function renderSources() {
       : st?.error ? `<span class="src-err">⚠ ${esc(st.error)}</span>` : st ? `<span class="note">${st.count} vacanc${st.count === 1 ? 'y' : 'ies'} · ${new Date(st.at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>` : '<span class="note">Not searched yet</span>';
     return `<li data-id="${s.id}"><span class="src-icon" aria-hidden="true">${ICON[s.type] || '🌐'}</span>
       <span class="src-main"><b>${esc(s.name || s.label)}</b> ${state}</span>
+      ${(() => { const mine = jobs.filter(j => !j.hidden && (j.sourceUrl === s.url || (s.type === 'tab' && j.source === s.label.split('/')[0])));
+        const todo = mine.filter(j => !hooks.vacancyOf?.(j.id)).length;
+        if (!mine.length) return '';
+        return todo ? `<button type="button" class="small src-addall" data-url="${esc(s.url)}" data-label="${esc(s.label)}" title="Every ad from this site becomes a vacancy; candidates are linked to the right one">＋ Add all ${todo} as vacancies</button>`
+          : `<span class="is-vac">✓ All ${mine.length} are vacancies</span>`; })()}
       <a class="btn ghost small" href="${esc(fillUrl(s.url, q, city))}" target="_blank" rel="noopener">${s.type === 'tab' ? 'Open ↗' : 'View ↗'}</a>
       <button type="button" class="src-del ghost small" data-id="${s.id}" aria-label="Remove ${esc(s.name || s.label)}">×</button></li>`;
   }).join('') || '<li class="note">No sites yet. Paste a link below, or pick a suggestion.</li>';
@@ -72,7 +77,9 @@ export function renderJobs() {
   const cur = $('#vfSource').value;
   $('#vfSource').innerHTML = '<option value="">All sites</option>' + opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
   $('#vfSource').value = opts.some(([v]) => v === cur) ? cur : '';
-  $('#jobsLine').innerHTML = visible.length ? `Showing <strong>${list.length}</strong> of ${visible.length} vacancies` : '';
+  const notYet = list.filter(j => !hooks.vacancyOf?.(j.id));
+  $('#jobsLine').innerHTML = visible.length ? `Showing <strong>${list.length}</strong> of ${visible.length} vacancies` +
+    (notYet.length > 1 ? ` <button type="button" class="small" id="addShown" title="Each one becomes a vacancy; candidates are linked to the right one">＋ Add these ${notYet.length} as vacancies</button>` : '') : '';
   $('#jobsNone').hidden = !(visible.length && !list.length);
   if (!$('#jobsNone').hidden) $('#jobsNone').innerHTML = whyEmpty();
   $('#jobsEmpty').hidden = visible.length > 0;
@@ -83,7 +90,9 @@ export function renderJobs() {
       <td><b>${esc(j.title)}</b>${prevRun && j.firstSeen > prevRun ? ' <span class="new">new</span>' : ''}${n ? ` <span class="list-tag" title="Candidates on the shortlist for this vacancy">📋 ${n}</span>` : ''}
         <div class="note">${esc((j.text || '').slice(0, 160))}${(j.text || '').length > 160 ? '…' : ''}</div></td>
       <td data-label="Company">${esc(j.company)}</td><td data-label="Location">${esc(j.location)}</td><td data-label="Posted">${esc(j.posted)}</td><td class="note" data-label="Site">${esc(j.source)}</td>
-      <td class="job-actions"><button type="button" class="small" data-use="${j.id}" title="Use this ad as the vacancy text, so CVs that copy it are flagged">Use as vacancy</button>
+      <td class="job-actions">${(() => { const key = hooks.vacancyOf?.(j.id);
+        return key ? `<span class="is-vac" title="This ad is one of your vacancies">✓ Vacancy · 👥 ${hooks.candidateCount?.(key) || 0}</span>`
+          : `<button type="button" class="small" data-use="${j.id}" title="Make this ad one of your vacancies: candidates who applied for it are linked to it, and CVs that copy it are flagged">Add as vacancy</button>`; })()}
         ${j.url ? `<a class="btn ghost small" href="${esc(j.url)}" target="_blank" rel="noopener">Open ↗</a>` : ''}
         <button type="button" class="ghost small" data-hide="${j.id}" title="Hide this ad">Hide</button></td></tr>`;
   }).join('');
@@ -141,6 +150,8 @@ export async function drainJobInbox() {
   return n;
 }
 
+export const refreshVacancies = () => { renderSources(); renderJobs(); };
+
 export async function initVacancies(h) {
   hooks = h;
   sources = await load('jobSources', []);
@@ -166,6 +177,8 @@ export async function initVacancies(h) {
   $('#vfWords').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
   $('#vfSource').onchange = renderJobs;
   $('#vfSources').onclick = async e => {
+    const all = e.target.closest('.src-addall');
+    if (all) { await hooks.addVacancies?.(jobs.filter(j => !j.hidden && !hooks.vacancyOf?.(j.id) && (j.sourceUrl === all.dataset.url || j.source === all.dataset.label.split('/')[0]))); renderSources(); return; }
     const del = e.target.closest('.src-del'); if (!del) return;
     sources = sources.filter(s => s.id !== del.dataset.id); await store('jobSources', sources); renderSources();
   };
@@ -179,6 +192,7 @@ export async function initVacancies(h) {
     }
     if (addSource(b.dataset.preset, { name: b.dataset.name })) setStatus(`${b.dataset.name} added.`);
   };
+  $('#jobsLine').onclick = e => { if (e.target.id === 'addShown') hooks.addVacancies?.(filteredJobs().filter(j => !hooks.vacancyOf?.(j.id))); };
   $('#jobsTbl tbody').onclick = async e => {
     const use = e.target.closest('[data-use]'), hide = e.target.closest('[data-hide]');
     if (use) hooks.useAsVacancy?.(jobById(use.dataset.use));

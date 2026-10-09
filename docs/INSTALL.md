@@ -99,7 +99,15 @@ Drop cover letters together with the CVs. You don't need to sort them first.
 
   You can also click a suggestion. A link with `{q}` in it is filled with your job title words, and `{city}` with the city.
 - **Search.** Press **Search now**, then filter on **job title** (a comma between alternatives) and **city**. Ads that are new since your last search are marked *new*. The search runs again by itself when you open the tab and the last one was more than a day ago.
-- **Use as vacancy** makes the ad the 📄 Vacancy text, so the 📨 check can see which CVs copy it. You can also put a shortlist of candidates on a found ad; the ad then shows 📋 and the number of candidates.
+- **Add as vacancy** makes an ad one of your vacancies in one tap. It appears straight away under 📁 Vacancy on the Candidates tab, and the 📨 check uses its text to see which CVs copy it.
+- **Add all … as vacancies** next to a site, or **Add these … as vacancies** above the list, adds every ad at once.
+- **Candidates are linked to the right vacancy by themselves** when no vacancy was typed while dropping them, in this order:
+  1. what their letter or CV says they apply for ("Hierbij solliciteer ik naar de functie van Verpleegkundige", "Application for Sales Manager");
+  2. a vacancy title named in the letter;
+  3. otherwise the best fit on the skills the ad asks for, marked *best guess*.
+
+  An *auto* label in the Vacancy column says why when you hover over it. Open a candidate to change it, or choose *Not linked to a vacancy*. Each ad shows ✓ Vacancy and how many candidates it has (👥).
+- You can also put a shortlist of candidates on a found ad; the ad then shows 📋 and the number of candidates.
 - **LinkedIn, Indeed and big job boards.** LinkedIn, Indeed, Werk.nl, Nationale Vacaturebank, Werkzoeken.nl, StepStone, Intermediair, Glassdoor and Jobbird forbid automatic reading, and doing it anyway gets accounts blocked. For those:
   1. Click **Open ↗**. Do your search there as usual.
   2. Click the CV Screener icon → **Collect vacancies from this page**. It reads only the ads you can see, plus the full text of the one you have open.
