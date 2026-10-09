@@ -13,11 +13,19 @@ const tmp = mkdtempSync(path.join(tmpdir(), 'shots-'));
 const id = [...createHash('sha256').update(ext).digest('hex').slice(0, 32)].map(c => String.fromCharCode(97 + parseInt(c, 16))).join('');
 
 const extra = {
-  'fatima-el-amrani.txt': `Fatima El Amrani\nRotterdam\nfatima.elamrani@example.nl | 06 23456789\n\nWerkervaring\n2021 - heden Data analist, Havenbedrijf Rotterdam\nDashboards in Power BI, SQL-queries op de scheepsdata, af en toe Python.\n2018 - 2021 Junior controller, Eneco\nMaandafsluiting, budgettering, veel Excel.\n\nOpleiding\n2014 - 2018 Bedrijfseconomie, Erasmus Universiteit (bachelor)\n\nTalen\nNederlands moedertaal, Engels vloeiend, Arabisch goed`,
-  'pieter-bakker.txt': `Pieter Bakker\nWoonplaats: Groningen\npieter@example.com\n\nWerkervaring\nmaart 2012 - heden Werkvoorbereider installatietechniek, Kuipers BV\nAutoCAD, Revit, BIM-modellen, inkoop van materiaal.\n2008 - 2012 Monteur, Feenstra\n\nOpleiding\nMBO Elektrotechniek niveau 4\n\nTalen: Nederlands, Duits (basis)`,
-  'emma-jansen.txt': `Emma Jansen\nEindhoven\nemma.jansen@example.com\n\nProfiel\nGedreven en resultaatgerichte recruiter met passie voor mensen. Proactief, klantgericht en stressbestendig – een echte teamspeler in een dynamische omgeving. Bovendien heb ik een scherp oog voor detail en lever ik graag een waardevolle bijdrage.\n\nWerkervaring\n2022 - heden Recruiter, [Bedrijfsnaam], Eindhoven\n- Verantwoordelijk voor de volledige werving en selectie.\n- Proactief sourcing via LinkedIn en vacaturebanken.\n- Nauwgezet beheer van kandidaten in het ATS.\n- Klantgericht contact met hiring managers.\n\nTalen\nNederlands moedertaal, Engels C1`,
+  'fatima-el-amrani.txt': `Fatima El Amrani\nRotterdam\nfatima.elamrani@example.com | +31 6 23456789\n\nWork experience\n2021 - present Data analyst, Port of Rotterdam\nPower BI dashboards, SQL on shipping data, some Python.\n2018 - 2021 Junior controller, Eneco\nMonth-end close, budgeting, lots of Excel.\n\nEducation\n2014 - 2018 BSc Business Economics, Erasmus University\n\nLanguages\nDutch native, English fluent, Arabic good`,
+  'pieter-bakker.txt': `Pieter Bakker\nLocation: Groningen\npieter@example.com\n\nWork experience\nMarch 2012 - present Work planner, building services, Kuipers BV\nAutoCAD, Revit, BIM models, procurement of materials.\n2008 - 2012 Electrician, Feenstra\n\nEducation\nMBO Electrical engineering, level 4\n\nLanguages: Dutch, German (basic)`,
+  'emma-jansen.txt': `Emma Jansen\nEindhoven\nemma.jansen@example.com\n\nProfile\nResults-driven and highly motivated recruiter, passionate about people. Proactive, detail-oriented and a true team player who thrives in a fast-paced environment – committed to excellence and eager to contribute.\n\nWork experience\n2022 - present Recruiter, [Company Name], Eindhoven\n- Responsible for end-to-end recruitment and selection.\n- Proactive sourcing via LinkedIn and job boards.\n- Meticulous management of candidates in the ATS.\n- Customer-centric contact with hiring managers.\n\nLanguages\nDutch native, English C1`,
 };
 for (const [f, t] of Object.entries(extra)) writeFileSync(path.join(tmp, f), t);
+// an English DOCX, built by python-docx from a plain-text source
+const { execFileSync } = await import('node:child_process');
+writeFileSync(path.join(tmp, 'sophie.txt'), ['Sophie de Vries', 'Utrecht', 'sophie.devries@example.com', '', 'Work experience',
+  '2019 - present Recruiter, Jansen Construction, Utrecht', 'Hiring site managers and planners. Phone screening, LinkedIn, job fairs.',
+  '2015 - 2019 HR officer, Municipality of Zeist', 'Payroll, absence management, contracts.', '', 'Education',
+  '2011 - 2015 Bachelor HRM, Utrecht University of Applied Sciences', '', 'Languages', 'Dutch: native', 'English: good', 'German: basic'].join('\n'));
+execFileSync('python3', ['-c', 'import docx,sys\nd=docx.Document()\nfor l in open(sys.argv[1]).read().split(chr(10)): d.add_paragraph(l)\nd.save(sys.argv[2])',
+  path.join(tmp, 'sophie.txt'), path.join(tmp, 'sophie-de-vries.docx')]);
 
 const pdfPath = path.join(tmp, 'john-petersen.pdf');
 {
@@ -34,7 +42,7 @@ const app = await ctx.newPage();
 await app.route('**/api/report', r => r.fulfill({ status: 200, body: '{}' }));
 await app.goto(`chrome-extension://${id}/app.html`);
 await app.fill('#tagInput', 'REQ-1042 Recruiter');
-await app.setInputFiles('#files', [pdfPath, path.join(root, 'test/fixtures/human-nl.docx'), ...Object.keys(extra).map(f => path.join(tmp, f))]);
+await app.setInputFiles('#files', [pdfPath, path.join(tmp, 'sophie-de-vries.docx'), ...Object.keys(extra).map(f => path.join(tmp, f))]);
 await app.waitForFunction(() => document.querySelectorAll('tbody tr').length === 5, null, { timeout: 30000 });
 await app.click('th[data-k="ai"]');
 await app.screenshot({ path: out('1-overview.png') });
