@@ -105,18 +105,32 @@ function build(node, terms) {
   return t;
 }
 
-// The three plain boxes ("must have", "nice to have", "leave out") as a query string.
-export function fromWords({ all = [], any = [], none = [] } = {}) {
-  const piece = w => /^[\p{L}\p{N}]+$/u.test(w) ? `${w}~` : `"${w.replace(/"/g, '')}"`;
-  return [
-    ...all.map(piece),
-    any.length ? `(${any.map(piece).join(' OR ')})` : '',
-    ...none.map(w => `-${piece(w)}`),
-  ].filter(Boolean).join(' ');
+// The plain boxes as a query string. A term is { text, mode: similar|exact|starts, field: any|skill|loc|... }
+// (a bare string is a "similar" term anywhere, which is how saved searches from 0.3 are stored).
+export function termCode(t) {
+  t = typeof t === 'string' ? { text: t } : t;
+  const text = t.text.trim().replace(/"/g, '');
+  const single = /^[\p{L}\p{N}]+$/u.test(text);
+  const v = t.mode === 'exact' || !single ? `"${text}"` : t.mode === 'starts' ? `${text}*` : `${text}~`;
+  return (t.field && t.field !== 'any' ? `${t.field}:` : '') + v;
 }
 
-// What a term looks like to a person: no quotes, no ~.
-export const plainLabel = l => l.replace(/["~]/g, '');
+export function fromWords({ all = [], any = [], groups, none = [] } = {}) {
+  groups = (groups ?? [any]).filter(g => g.length);
+  return [
+    ...all.map(termCode),
+    ...groups.map(g => g.length > 1 ? `(${g.map(termCode).join(' OR ')})` : termCode(g[0])),
+    ...none.map(t => `-${termCode(t)}`),
+  ].join(' ');
+}
+
+const FIELD_WORD = { skill: 'skills', loc: 'location', edu: 'education', lang: 'languages', name: 'name', text: 'text' };
+// What a term looks like to a person: no quotes, no ~, "skill:python" -> "python (skills)".
+export const plainLabel = l => {
+  const m = l.match(/^(not )?([a-z]+):(.*)$/);
+  const clean = s => s.replace(/["~]/g, '');
+  return m && FIELD_WORD[m[2]] ? `${m[1] || ''}${clean(m[3])} (${FIELD_WORD[m[2]]})` : clean(l);
+};
 
 export function compile(q) {
   const query = (q || '').trim();

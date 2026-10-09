@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CV Screener",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Parse, filter and check large volumes of CVs – locally, alongside any ATS (Oleeo and others).",
   "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting"],
   "action": { "default_popup": "popup.html", "default_title": "CV Screener", "default_icon": "icon.png" },

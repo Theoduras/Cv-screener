@@ -29,21 +29,23 @@
 
 <section id="finder">
   <h2 class="finder-title">Find candidates</h2>
-  <p class="finder-sub">Type a word and press <kbd>Enter</kbd>. Add as many as you like – you can use whole phrases too, like <em>driver's licence</em>.</p>
+  <p class="finder-sub">Type a word or phrase and press <kbd>Enter</kbd>. <strong>Click a word</strong> to choose exact match, "starts with", or where to look.</p>
   <div class="boxes">
     <div class="box must">
       <label for="in-all">✅ Must have <span class="why">every one of these</span></label>
       <div class="chipfield" data-kind="all"><span class="chips"></span><input id="in-all" placeholder="e.g. Excel, nurse, driver's licence" autocomplete="off"></div>
     </div>
     <div class="box any">
-      <label for="in-any">➕ Nice to have <span class="why">at least one of these</span></label>
-      <div class="chipfield" data-kind="any"><span class="chips"></span><input id="in-any" placeholder="e.g. SAP, Oracle" autocomplete="off"></div>
+      <label>➕ At least one of <span class="why">any one is enough</span></label>
+      <div id="groups"></div>
+      <button id="addGroup" class="link small" type="button">+ add another "at least one of" list</button>
     </div>
     <div class="box none">
       <label for="in-none">🚫 Leave out <span class="why">CVs that mention these</span></label>
       <div class="chipfield" data-kind="none"><span class="chips"></span><input id="in-none" placeholder="e.g. intern, internship" autocomplete="off"></div>
     </div>
   </div>
+  <div id="summary" aria-live="polite"></div>
   <div id="suggest"></div>
   <div class="selects" id="filters">
     <label>📍 Where<input id="floc" placeholder="Any city"></label>
@@ -77,6 +79,24 @@
   <div id="savedWrap"><span class="saved-label">Your saved searches:</span><span id="saved"></span></div>
 </section>
 <div id="resultLine"></div>
+<div id="tagEditor" hidden role="dialog" aria-label="Word options">
+  <div class="te-title"></div>
+  <fieldset><legend>How should it match?</legend>
+    <label><input type="radio" name="te-mode" value="similar"> <b>Similar words</b> <span>nurse also finds nurses</span></label>
+    <label><input type="radio" name="te-mode" value="exact"> <b>Exactly this</b> <span>only this exact word or phrase</span></label>
+    <label class="te-starts"><input type="radio" name="te-mode" value="starts"> <b>Starts with</b> <span>recruit finds recruiter, recruitment</span></label>
+  </fieldset>
+  <fieldset><legend>Where should we look?</legend>
+    <select id="te-field">
+      <option value="any">Anywhere in the CV</option><option value="skill">Only in the skills</option><option value="loc">Only in the location</option>
+      <option value="edu">Only in the education level</option><option value="lang">Only in the languages</option><option value="name">Only in the name</option>
+    </select>
+  </fieldset>
+  <fieldset><legend>Move to</legend><div class="te-move">
+    <button type="button" data-move="all" class="word all">✅ Must have</button><button type="button" data-move="g:0" class="word any">➕ At least one of</button><button type="button" data-move="none" class="word none-btn">🚫 Leave out</button>
+  </div></fieldset>
+  <div class="te-actions"><button type="button" id="te-delete" class="danger">Remove word</button><button type="button" id="te-done">Done</button></div>
+</div>
 
 <table id="tbl">
   <thead><tr>

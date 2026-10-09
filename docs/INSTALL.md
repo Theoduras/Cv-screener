@@ -29,23 +29,24 @@ CV Screener is a Chrome extension that reads, sorts and filters large piles of C
 
 **Find the right candidates**
 
-Under **Find candidates** there are three boxes. Type a word and press **Enter** (or just click somewhere else):
+Under **Find candidates**, type a word or phrase in a box and press **Enter** (or just click somewhere else):
 
-- ✅ **Must have:** every CV shown contains *all* of these. Example: `Excel`, `driver's licence`.
-- ➕ **Nice to have:** a CV needs *at least one* of these. Example: `SAP`, `Oracle`.
-- 🚫 **Leave out:** hides CVs that mention these. Example: `intern`.
+- ✅ **Must have:** every CV shown contains *all* of these.
+- ➕ **At least one of:** any one of these is enough. Need two separate choices, e.g. (*SAP or Oracle*) **and** (*Dutch or Flemish*)? Click **+ add another "at least one of" list**.
+- 🚫 **Leave out:** hides CVs that mention these.
 
-Some tips:
-- Whole phrases work, so you can type `driver's licence` without quotes.
-- Small differences in a word are found too, so `nurse` also finds *nurses*.
-- Click **+ a skill** under **Quick add** to use the skills that appear most in your CVs.
-- Click **×** on a word to remove it.
-- The dropdowns narrow things further: where, which language, how many years of experience, and whether to hide AI-written CVs.
-- **★ Save this search** keeps it all under a name, so next time it's one click.
-- **Start over** clears everything.
+**Click any word** for its options:
+- **Similar words** (the default): *nurse* also finds *nurses*.
+- **Exactly this:** only that exact word or phrase.
+- **Starts with:** *recruit* finds *recruiter*, *recruitment*.
+- **Where should we look?** Anywhere in the CV, or only in the skills, location, education, languages or name.
+- **Move to** another box, or **Remove word**.
 
+Each word shows a small number: how many of your CVs contain it.
+The purple sentence under the boxes says in plain words what you are searching for, so you can check it.
+Click **+ a skill** under **Quick add** to use the skills that appear most in your CVs, and use the dropdowns for where, language, experience and hiding AI-written CVs.
+**★ Save this search** keeps it all under a name, so next time it's one click. **Start over** clears everything.
 If nothing matches, the screen tells you so and offers the words you can remove with one click.
-For experts, **Advanced search** accepts search syntax (`(sap OR oracle) -intern years:>=5`). Click **?** there for examples.
 
 **The AI score (0–100)**
 - Green (< 25) means few signals, orange (25–54) some, red (≥ 55) many.

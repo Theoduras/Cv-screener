@@ -3,12 +3,12 @@ import { extract, fileKind, ExtractError } from './lib/extract.js';
 import { parseCV } from './lib/parse.js';
 import { aiScore, textHash } from './lib/aiscore.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
-import { compile, highlight, fromWords, plainLabel } from './lib/query.js';
+import { compile, highlight, fromWords, plainLabel, termCode } from './lib/query.js';
 
 installGlobalHandlers();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], words = { all: [], any: [], none: [] };
+let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], words = { all: [], groups: [[]], none: [] };
 
 const uid = () => crypto.randomUUID();
 const store = (k, v) => chrome.storage.local.set({ [k]: v });
@@ -206,7 +206,7 @@ $('#files').onchange = e => { ingest([...e.target.files]); e.target.value = ''; 
 $('#folder').onchange = e => { ingest([...e.target.files]); e.target.value = ''; };
 $('#filters').oninput = render;
 $('#reset').onclick = () => {
-  words = { all: [], any: [], none: [] };
+  words = emptyWords();
   document.querySelectorAll('#finder input').forEach(i => i.value = '');
   document.querySelectorAll('#finder select').forEach(s => s.selectedIndex = 0);
   render();
@@ -214,24 +214,68 @@ $('#reset').onclick = () => {
 $('#advanced').oninput = render;
 
 // ---------- plain-word boxes ----------
-const KIND_NAME = { all: 'Must have', any: 'Nice to have', none: 'Leave out' };
-function addWords(kind, raw) {
-  const add = raw.split(/[,;]/).map(s => s.trim()).filter(Boolean)
-    .filter(w => !words[kind].some(x => x.toLowerCase() === w.toLowerCase()));
-  if (!add.length) return false;
-  words[kind] = [...words[kind], ...add];
-  render();
-  return true;
+// words = { all: [term], groups: [[term], …], none: [term] }, term = { text, mode, field }
+const emptyWords = () => ({ all: [], groups: [[]], none: [] });
+const KIND_NAME = { all: 'Must have', none: 'Leave out' };
+const kindName = k => KIND_NAME[k] || 'At least one of';
+const MODE_TAG = { exact: 'exact', starts: 'starts with' };
+const FIELD_TAG = { skill: 'in skills', loc: 'in location', edu: 'in education', lang: 'in languages', name: 'in name' };
+const list = kind => kind.startsWith('g:') ? words.groups[+kind.slice(2)] : words[kind];
+function normalise(w) {
+  // saved searches from 0.3 stored plain strings and a single `any` list
+  const t = x => typeof x === 'string' ? { text: x, mode: 'similar', field: 'any' } : x;
+  return { all: (w?.all || []).map(t), groups: (w?.groups || [w?.any || []]).map(g => g.map(t)), none: (w?.none || []).map(t) };
 }
-function removeWord(kind, i) { words[kind].splice(i, 1); render(); }
+function addWords(kind, raw) {
+  const target = list(kind);
+  const add = raw.split(/[,;]/).map(s => s.trim()).filter(Boolean)
+    .filter(w => !target.some(x => x.text.toLowerCase() === w.toLowerCase()))
+    .map(text => ({ text, mode: 'similar', field: 'any' }));
+  if (!add.length) return;
+  target.push(...add);
+  render();
+}
+function removeWord(kind, i) { list(kind).splice(i, 1); render(); }
+const termText = t => `${t.mode === 'exact' ? '“' + t.text + '”' : t.text}${t.mode === 'starts' ? '…' : ''}${t.field !== 'any' ? ' ' + FIELD_TAG[t.field] : ''}`;
+const joinOr = xs => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' or ' + xs.at(-1);
+function summary() {
+  const parts = [];
+  if (words.all.length) parts.push(`have ${words.all.map(termText).join(' and ')}`);
+  for (const g of words.groups) if (g.length) parts.push(g.length > 1 ? `have at least one of ${joinOr(g.map(termText))}` : `have ${termText(g[0])}`);
+  let s = parts.length ? 'Candidates who ' + parts.join(', and who ') : '';
+  if (words.none.length) s += (s ? ', but ' : 'Candidates who ') + `don't mention ${joinOr(words.none.map(termText))}`;
+  const extra = [];
+  if ($('#floc').value.trim()) extra.push(`in ${$('#floc').value.trim()}`);
+  if ($('#flang').value) extra.push(`who speak ${$('#flang').value}`);
+  if ($('#fmin').value) extra.push(`with ${$('#fmin').value}+ years of experience`);
+  if ($('#fai').value === '54') extra.push('hiding likely AI-written CVs');
+  if ($('#fai').value === '24') extra.push('only clearly human-written CVs');
+  if ($('#ftag').value) extra.push(`for ${$('#ftag').value}`);
+  if (!s && !extra.length) return '';
+  return (s || 'All candidates') + (extra.length ? ' · ' + extra.join(' · ') : '') + '.';
+}
+function ensureGroupFields() {
+  const box = $('#groups');
+  while (box.children.length > words.groups.length) box.lastElementChild.remove();
+  while (box.children.length < words.groups.length) {
+    const i = box.children.length;
+    box.insertAdjacentHTML('beforeend', `<div class="group">${i ? '<span class="and">and also at least one of</span>' : ''}
+      <div class="chipfield" data-kind="g:${i}"><span class="chips"></span><input placeholder="${i ? 'e.g. Dutch, Flemish' : 'e.g. SAP, Oracle'}" autocomplete="off" aria-label="At least one of"></div>
+      ${i ? `<button type="button" class="link small del-group" data-g="${i}">remove this list</button>` : ''}</div>`);
+  }
+}
 function renderWords() {
+  ensureGroupFields();
+  const count = t => { const c = compile(termCode(t)); return rows.filter(r => !r.error && c.test(r)).length; };
   document.querySelectorAll('.chipfield').forEach(f => {
-    const kind = f.dataset.kind;
-    f.querySelector('.chips').innerHTML = words[kind].map((w, i) =>
-      `<span class="word ${kind}">${esc(w)}<button type="button" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(w)}">×</button></span>`).join('');
+    const kind = f.dataset.kind, cls = kind.startsWith('g:') ? 'any' : kind;
+    f.querySelector('.chips').innerHTML = list(kind).map((t, i) => {
+      const badges = [MODE_TAG[t.mode], FIELD_TAG[t.field]].filter(Boolean).map(b => `<small class="badge">${b}</small>`).join('');
+      return `<span class="word ${cls}"><button type="button" class="wtext" data-edit="${kind}" data-i="${i}" title="Click for options: exact match, starts with, where to look">${esc(t.text)}${badges}<small class="cnt" title="CVs that contain this">${count(t)}</small></button><button type="button" class="wdel" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(t.text)}">×</button></span>`;
+    }).join('');
   });
-  // One-click suggestions: the skills most common in the loaded CVs that aren't chosen yet.
-  const chosen = new Set(Object.values(words).flat().map(w => w.toLowerCase()));
+  $('#summary').textContent = summary();
+  const chosen = new Set([...words.all, ...words.groups.flat(), ...words.none].map(t => t.text.toLowerCase()));
   const counts = {};
   for (const r of rows) for (const s of r.skills || []) if (!chosen.has(s)) counts[s] = (counts[s] || 0) + 1;
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
@@ -243,26 +287,78 @@ function renderResultLine(list) {
   if (!rows.length) { el.innerHTML = ''; $('#tbl').hidden = false; return; }
   $('#tbl').hidden = !list.length;
   if (list.length) { el.innerHTML = `Showing <strong>${list.length}</strong> of ${rows.length} candidates`; el.className = ''; return; }
-  const all = Object.entries(words).flatMap(([k, ws]) => ws.map((w, i) => [k, w, i]));
+  const kinds = [['all', words.all], ...words.groups.map((g, i) => [`g:${i}`, g]), ['none', words.none]];
+  const all = kinds.flatMap(([k, ws]) => ws.map((t, i) => [k, t, i]));
   el.className = 'none-found';
   el.innerHTML = 'No candidates match all of this. ' + (all.length
-    ? 'Try removing a word: ' + all.map(([k, w, i]) => `<button type="button" class="word ${k}" data-kind="${k}" data-i="${i}" title="Remove from ${KIND_NAME[k]}">${esc(w)} ×</button>`).join(' ')
+    ? 'Try removing a word: ' + all.map(([k, t, i]) => `<button type="button" class="word ${k.startsWith('g:') ? 'any' : k} wdel" data-kind="${k}" data-i="${i}" title="Remove from ${kindName(k)}">${esc(t.text)} ×</button>`).join(' ') +
+      ' <span class="note">Or loosen Where, Speaks, Experience or AI above.</span>'
     : 'Try changing the choices above, or press <strong>Start over</strong>.');
-  if (all.length) el.innerHTML += ' <span class="note">Or loosen Where, Speaks, Experience or AI above.</span>';
 }
-document.querySelectorAll('.chipfield').forEach(f => {
-  const input = f.querySelector('input'), kind = f.dataset.kind;
-  input.addEventListener('keydown', e => {
-    if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) { e.preventDefault(); addWords(kind, input.value); input.value = ''; }
-    else if (e.key === 'Backspace' && !input.value && words[kind].length) removeWord(kind, words[kind].length - 1);
-  });
-  // Typing a word and clicking elsewhere still counts – people don't always press Enter.
-  input.addEventListener('blur', () => { if (input.value.trim()) { addWords(kind, input.value); input.value = ''; } });
-  f.addEventListener('click', e => { if (e.target === f || e.target.classList.contains('chips')) input.focus(); });
+
+// typing: delegated, because the "at least one of" lists come and go
+const fieldOf = el => el.closest?.('.chipfield');
+document.addEventListener('keydown', e => {
+  const f = fieldOf(e.target); if (!f || e.target.tagName !== 'INPUT') return;
+  const input = e.target, kind = f.dataset.kind;
+  if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) { e.preventDefault(); addWords(kind, input.value); input.value = ''; }
+  else if (e.key === 'Backspace' && !input.value && list(kind).length) removeWord(kind, list(kind).length - 1);
 });
+// typing a word and clicking elsewhere still counts – people don't always press Enter
+document.addEventListener('focusout', e => {
+  const f = fieldOf(e.target);
+  if (f && e.target.tagName === 'INPUT' && e.target.value.trim()) { addWords(f.dataset.kind, e.target.value); e.target.value = ''; }
+});
+$('#addGroup').onclick = () => {
+  words.groups.push([]); render();
+  $(`.chipfield[data-kind="g:${words.groups.length - 1}"] input`).focus();
+};
+
+// the word editor
+let editing = null;
+function openEditor(kind, i, anchor) {
+  editing = { kind, i };
+  const t = list(kind)[i], ed = $('#tagEditor');
+  ed.querySelector('.te-title').textContent = `Options for “${t.text}”`;
+  const single = /^[\p{L}\p{N}]+$/u.test(t.text);
+  ed.querySelector('.te-starts').hidden = !single;
+  ed.querySelector(`input[value="${single || t.mode === 'exact' ? t.mode : 'exact'}"]`).checked = true;
+  $('#te-field').value = t.field;
+  ed.querySelectorAll('[data-move]').forEach(b => b.classList.toggle('current', b.dataset.move === (kind.startsWith('g:') ? 'g:0' : kind)));
+  ed.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  ed.style.top = `${scrollY + r.bottom + 6}px`;
+  ed.style.left = `${Math.max(8, Math.min(scrollX + r.left, scrollX + innerWidth - ed.offsetWidth - 8))}px`;
+}
+const closeEditor = () => { $('#tagEditor').hidden = true; editing = null; };
+$('#tagEditor').addEventListener('change', e => {
+  if (!editing) return;
+  const t = list(editing.kind)[editing.i];
+  if (e.target.name === 'te-mode') t.mode = e.target.value;
+  if (e.target.id === 'te-field') t.field = e.target.value;
+  render();
+});
+$('#tagEditor').addEventListener('click', e => {
+  if (!editing) return;
+  const mv = e.target.closest('[data-move]');
+  if (mv && mv.dataset.move !== editing.kind) {
+    const [t] = list(editing.kind).splice(editing.i, 1);
+    list(mv.dataset.move).push(t);
+    closeEditor(); render();
+  }
+});
+$('#te-done').onclick = closeEditor;
+$('#te-delete').onclick = () => { if (editing) removeWord(editing.kind, editing.i); closeEditor(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditor(); });
+
 document.addEventListener('click', e => {
-  const b = e.target.closest('button[data-kind][data-i]');
-  if (b) { removeWord(b.dataset.kind, +b.dataset.i); return; }
+  const edit = e.target.closest('.wtext');
+  if (edit) { openEditor(edit.dataset.edit, +edit.dataset.i, edit); return; }
+  if (!e.target.closest('#tagEditor')) closeEditor();
+  const del = e.target.closest('.wdel');
+  if (del) { removeWord(del.dataset.kind, +del.dataset.i); return; }
+  const g = e.target.closest('.del-group');
+  if (g) { words.groups.splice(+g.dataset.g, 1); render(); return; }
   const s = e.target.closest('.sugg');
   if (s) addWords('all', s.dataset.word);
 });
@@ -312,9 +408,10 @@ function renderSaved() {
     `<span class="chip"><button class="chip-apply" data-i="${i}" title="${esc(describe(s))}">${esc(s.name)}</button><button class="chip-del" data-i="${i}" aria-label="Delete ${esc(s.name)}">×</button></span>`).join('');
 }
 function describe(s) {
-  const w = s.words || {};
-  return [w.all?.length && 'Must have: ' + w.all.join(', '), w.any?.length && 'Nice to have: ' + w.any.join(', '),
-    w.none?.length && 'Leave out: ' + w.none.join(', '), s.state.fq].filter(Boolean).join(' · ') || 'Filters only';
+  const w = normalise(s.words);
+  const t = xs => xs.map(termText).join(', ');
+  return [w.all.length && 'Must have: ' + t(w.all), ...w.groups.filter(g => g.length).map(g => 'At least one of: ' + t(g)),
+    w.none.length && 'Leave out: ' + t(w.none), s.state.fq].filter(Boolean).join(' · ') || 'Filters only';
 }
 $('#saveSearch').onclick = async () => {
   const name = prompt('Give this search a name, so you can use it again with one click.\n(For example: "Nurses Utrecht")');
@@ -329,7 +426,7 @@ $('#saved').onclick = async e => {
   if (e.target.classList.contains('chip-del')) { saved.splice(i, 1); await store('savedSearches', saved); renderSaved(); return; }
   if (!e.target.classList.contains('chip-apply')) return;
   for (const [id, v] of Object.entries(saved[i].state)) { const el = $('#' + id); if (el) el.value = v; }
-  words = structuredClone(saved[i].words || { all: [], any: [], none: [] });
+  words = normalise(structuredClone(saved[i].words));
   if (saved[i].state.fq || saved[i].state.fmax) { $('#advanced').hidden = false; $('#advToggle').textContent = 'Advanced search ▾'; }
   render();
 };

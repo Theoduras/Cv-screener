@@ -91,3 +91,30 @@ button.link{background:transparent;color:var(--muted);padding:9px 4px;text-decor
 #resultLine{margin:0 20px 10px;font-size:16px}
 #resultLine.none-found{padding:12px 14px;background:#fff7e6;border:1px solid #f2d39b;border-radius:10px;line-height:2}
 [hidden]{display:none!important}
+
+/* ---------- word options, groups, summary ---------- */
+.word .wtext{background:transparent;border:0;color:inherit;font:inherit;padding:0;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.word .wtext:hover{text-decoration:underline dotted}
+.word .wdel{background:transparent;border:0;color:inherit;font-size:17px;line-height:1;padding:0 4px;cursor:pointer;border-radius:50%}
+.word .wdel:hover{background:#0001}
+.badge{font-size:11px;font-weight:600;background:#fff9;border-radius:6px;padding:1px 5px}
+.cnt{font-size:11px;min-width:18px;text-align:center;background:#0000000f;border-radius:9px;padding:1px 5px}
+.word.none .wtext{text-decoration:line-through}
+.group+.group{margin-top:8px}
+.and{display:block;font-size:12px;font-weight:600;color:var(--accent);margin:2px 0 4px}
+button.link.small{font-size:13px;padding:4px 0}
+#summary{margin:12px 0 0;padding:10px 12px;background:#f3f0ff;border-radius:10px;font-size:15px;color:#3b2a8f}
+#summary:empty{display:none}
+#tagEditor{position:absolute;z-index:5;width:340px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px #0003;padding:14px}
+.te-title{font-weight:700;margin-bottom:6px}
+#tagEditor fieldset{border:0;padding:0;margin:8px 0}
+#tagEditor legend{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+#tagEditor fieldset>label{display:block;padding:6px 8px;border-radius:8px;cursor:pointer}
+#tagEditor fieldset>label:hover{background:var(--bg)}
+#tagEditor fieldset>label span{color:var(--muted);font-size:12px;display:block;margin-left:22px}
+#te-field{width:100%;font-size:14px;padding:7px}
+.te-move{display:flex;gap:6px;flex-wrap:wrap}
+.te-move .word{cursor:pointer;padding:5px 10px}
+.te-move .none-btn{background:#fde7e5;color:#a1271c}
+.te-move .current{outline:2px solid currentColor}
+.te-actions{display:flex;justify-content:space-between;margin-top:10px}

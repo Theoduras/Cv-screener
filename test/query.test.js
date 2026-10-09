@@ -71,3 +71,16 @@ test('plain boxes: forgiving endings, phrases, OR and leave-out', async () => {
   assert.deepEqual(q({ any: ['python', 'oracle'], none: ['intern'] }), ['Ann']);
   assert.deepEqual(q({ all: ["driver's licence"] }), ['Ann']);
 });
+
+test('word options: exact, starts with, field, and several either/or lists', async () => {
+  const { fromWords } = await import('../extension/lib/query.js');
+  const q = w => [ann, bob].filter(compile(fromWords(w)).test).map(r => r.name.split(' ')[0]);
+  const T = (text, mode = 'similar', field = 'any') => ({ text, mode, field });
+  assert.deepEqual(q({ all: [T('database', 'exact')] }), [], 'exact: database does not find databases');
+  assert.deepEqual(q({ all: [T('consult', 'starts')] }), ['Bob']);
+  assert.deepEqual(q({ all: [T('sql', 'similar', 'skill')] }), ['Ann']);
+  assert.deepEqual(q({ all: [T('utrecht', 'similar', 'loc')] }), ['Ann']);
+  assert.deepEqual(q({ groups: [[T('sap'), T('python')], [T('oracle'), T('rijbewijs')]] }), ['Ann', 'Bob']);
+  assert.deepEqual(q({ groups: [[T('sap'), T('python')], [T('oracle')]] }), ['Bob']);
+  assert.deepEqual(q({ none: [T('sap', 'similar', 'skill')] }), ['Ann']);
+});
