@@ -18,13 +18,13 @@ Na deze stappen heb je een downloadpagina met installatie-instructies om naar te
 3. Voeg onder *Environment Variables* toe:
    - `GITHUB_TOKEN` = het token uit stap 1
    - `GITHUB_REPO` = `theoduras/cv-screener`
-4. Klik op **Deploy**. Je krijgt een adres als `https://cv-screener-xxxx.vercel.app`.
+4. Klik op **Deploy**. Je krijgt een adres als `https://cv-screener-lilac.vercel.app`.
 
 ## 3. Extensie naar jouw meldpunt laten wijzen
 
 1. Zet je Vercel-adres in `extension/config.js`:
    ```js
-   export const REPORT_URL = 'https://cv-screener-xxxx.vercel.app/api/report';
+   export const REPORT_URL = 'https://cv-screener-lilac.vercel.app/api/report';
    ```
 2. Maak de download opnieuw en push:
    ```sh
@@ -36,7 +36,7 @@ Na deze stappen heb je een downloadpagina met installatie-instructies om naar te
 ## 4. Testen of meldingen aankomen
 
 ```sh
-curl -X POST https://cv-screener-xxxx.vercel.app/api/report \
+curl -X POST https://cv-screener-lilac.vercel.app/api/report \
   -H 'Content-Type: application/json' \
   -d '{"message":"testmelding","step":"setup"}'
 ```
