@@ -1,8 +1,14 @@
-# Installing CV Screener (for testers)
+# Using CV Screener (for testers)
+
+**Two ways to use it:**
+- **Web version (nothing to install):** open https://cv-screener-lilac.vercel.app/app/ in any modern browser. Everything works except pulling candidates from your ATS page.
+- **Chrome extension:** everything, plus **Capture candidate from this page** in Oleeo and other ATSs. Install it as described below.
+
+In both, CVs are read and stored only in your own browser and are never uploaded. They are separate, though: CVs added in the web version don't appear in the extension, or the other way round.
 
 CV Screener is a Chrome extension that reads, sorts and filters large piles of CVs. It also flags which ones were probably written by an AI tool. It works alongside any ATS (Oleeo and others). **Every CV stays in your own browser.**
 
-## 1. Install (2 minutes)
+## 1. Install the extension (2 minutes, optional)
 
 1. Download **cv-screener.zip** from the link you were sent and **unzip it**: right-click → *Extract All*. You get a folder called `cv-screener`.
 2. Open Chrome (or Edge) and go to `chrome://extensions` (Edge: `edge://extensions`).

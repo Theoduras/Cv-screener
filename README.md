@@ -1,6 +1,6 @@
 # CV Screener
 
-Chrome extension for screening large volumes of CVs on top of any ATS (Oleeo and others).
+Screen large volumes of CVs on top of any ATS (Oleeo and others), as a **web page** (nothing to install: https://cv-screener-lilac.vercel.app/app/) or a **Chrome extension** that can also capture candidates from the ATS page. Both run entirely in the browser.
 
 - **Parses** PDF, DOCX and TXT into name, contact details, location, languages, skills, years of experience and education level.
 - **Two separate AI checks**, each scored 0–100 with its reasons. 🤖 *Was it written by AI?* 📨 *Was it sent or rewritten per vacancy by an auto-apply tool?* The second compares the CV against the pasted vacancy text and against other applications. Both are indicators, not proof.
@@ -17,7 +17,7 @@ Chrome extension for screening large volumes of CVs on top of any ATS (Oleeo and
 |---|---|
 | ![AI explanation](docs/screenshots/3-ai-explanation.png) | ![Popup](docs/screenshots/4-popup.png) |
 
-More: [cover letter](docs/screenshots/14-cover-letter.png) · [AI vs tool](docs/screenshots/12-ai-and-tool.png) · [vacancy text](docs/screenshots/11-vacancy-text.png) · [typos](docs/screenshots/13-typos.png) · [guided search](docs/screenshots/7-custom-search.png) · [word options](docs/screenshots/10-word-options.png) · [no results helper](docs/screenshots/9-no-results-help.png) · [highlighted matches](docs/screenshots/8-search-highlight.png) · [filtered](docs/screenshots/2-filtered.png) · [download page](docs/screenshots/5-download-page.png) · [on a phone](docs/screenshots/6-download-page-mobile.png). Regenerate with `node tools/screenshots.mjs`.
+More: [web version](docs/screenshots/17-web-version.png) · [cover letter](docs/screenshots/14-cover-letter.png) · [AI vs tool](docs/screenshots/12-ai-and-tool.png) · [vacancy text](docs/screenshots/11-vacancy-text.png) · [typos](docs/screenshots/13-typos.png) · [guided search](docs/screenshots/7-custom-search.png) · [word options](docs/screenshots/10-word-options.png) · [no results helper](docs/screenshots/9-no-results-help.png) · [highlighted matches](docs/screenshots/8-search-highlight.png) · [filtered](docs/screenshots/2-filtered.png) · [download page](docs/screenshots/5-download-page.png) · [on a phone](docs/screenshots/6-download-page-mobile.png). Regenerate with `node tools/screenshots.mjs`.
 
 | For | Read |
 |---|---|
@@ -32,6 +32,7 @@ extension/          the Chrome extension (MV3, no build step)
   lib/doctype.js    CV or cover letter, and linking letters to CVs
   lib/dict.js       skills, cities, languages, AI phrase lists
   capture.js        reads the open ATS tab
-site/               Vercel: download page + /api/report -> GitHub issue
-test/               node:test unit tests     tools/e2e.mjs  full extension in Chromium
+site/               Vercel: download page, app/ (web version, built from extension/ by scripts/package.sh), /api/report -> GitHub issue
+  lib/platform.js   (in extension/lib) the few things that differ between extension and web page
+test/               node:test unit tests     tools/e2e.mjs  extension in Chromium     tools/e2e-web.mjs  web version
 ```

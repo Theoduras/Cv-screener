@@ -1,7 +1,16 @@
 #!/usr/bin/env sh
-# Zips extension/ into site/cv-screener.zip, which the Vercel page serves as the download.
+# Builds both ways of using the screener from extension/:
+#   site/cv-screener.zip  the Chrome extension, downloaded from the page
+#   site/app/             the same screener as a plain web page (no install)
 set -e
 cd "$(dirname "$0")/.."
+version=$(grep '"version"' extension/manifest.json | cut -d'"' -f4)
+
 rm -f site/cv-screener.zip
 (cd extension && zip -qr ../site/cv-screener.zip . -x '.*')
-echo "site/cv-screener.zip ($(du -h site/cv-screener.zip | cut -f1)), version $(grep '"version"' extension/manifest.json | cut -d'"' -f4)"
+
+rm -rf site/app && mkdir -p site/app
+cp -r extension/lib extension/vendor extension/app.js extension/app.css extension/config.js extension/icon.png site/app/
+sed "s|<meta charset=\"utf-8\">|<meta charset=\"utf-8\"><meta name=\"cvs-version\" content=\"$version-web\"><link rel=\"icon\" href=\"icon.png\">|" extension/app.html > site/app/index.html
+
+echo "site/cv-screener.zip ($(du -h site/cv-screener.zip | cut -f1)) and site/app/ ($(du -sh site/app | cut -f1)), version $version"

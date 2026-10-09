@@ -11,6 +11,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,san
 main{max-width:760px;margin:0 auto;padding:32px 16px 64px}
 h1{font-size:2rem;margin:0 0 4px}h2{margin-top:2.2em}
 .lede{color:var(--muted);font-size:1.1rem;margin:0 0 24px}
+.choose{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0}@media(max-width:640px){.choose{grid-template-columns:1fr}}.opt .small{margin:8px 0 0}.dl.alt{background:transparent;color:var(--accent);border:2px solid var(--accent)}
 .dl{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600}
 .small{color:var(--muted);font-size:.9rem}
 img{max-width:100%;border:1px solid var(--line);border-radius:10px;margin-top:24px}
@@ -21,11 +22,21 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
 <body><main>
 <h1>CV Screener</h1>
 <p class="lede">Read, filter and check hundreds of CVs at once, alongside your own ATS. Everything stays in your browser.</p>
-<a class="dl" href="cv-screener.zip" download>Download cv-screener.zip</a>
-<p class="small">Chrome or Edge · version 0.6 (test build)</p>
+<div class="choose">
+  <div class="opt">
+    <a class="dl" href="app/">Open the web version</a>
+    <p class="small">Nothing to install. Works in any modern browser (Chrome, Edge, Firefox, Safari). CVs are read only in your browser, never uploaded.</p>
+  </div>
+  <div class="opt">
+    <a class="dl alt" href="cv-screener.zip" download>Download the Chrome extension</a>
+    <p class="small">Everything in the web version, plus pulling candidates straight from your ATS page (Oleeo and others). Chrome or Edge.</p>
+  </div>
+</div>
+<p class="small">Version 0.7 (test build)</p>
 <img src="screenshot.png" alt="The screener: CVs in a table with location, languages, years of experience, skills and AI score">
 
-<h2>Install (2 minutes)</h2>
+<h2 id="install">Install the extension (2 minutes)</h2>
+<p class="small">Only needed for capturing candidates from your ATS page. Otherwise just use the <a href="app/">web version</a>.</p>
 <ol>
   <li>Download the zip above and <strong>unzip it</strong>: right-click → <em>Extract All</em>.</li>
   <li>In Chrome, go to <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li>
