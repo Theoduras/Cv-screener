@@ -95,6 +95,15 @@ export const LLM_PHRASES = [
   'i am excited to','i am confident that','eager to contribute','make a meaningful impact','unwavering',
   'i am writing to express my interest','i am thrilled to','ideal fit','align perfectly','aligns perfectly','i look forward to the opportunity to discuss','valuable asset to your team',
   'met veel enthousiasme solliciteer ik','sluit naadloos aan','ideale kandidaat',
+  'proactive mindset','proactive attitude','measurable results','data-driven insights','what distinguishes me',
+  'what sets me apart','take ownership','i would welcome the opportunity','thank you for considering my application',
+  'thank you for your time and consideration','positive attitude','engaging customer experiences','continue growing professionally',
+  'grow professionally','fresh ideas','meaningful projects','creative thinking','connect with audiences','strong work ethic',
+  'turn ideas into','changing priorities','successful outcomes','work collaboratively','working collaboratively',
+  'i am particularly interested','contribute to your team','innovative campaigns','innovative marketing strategies',
+  'excellent interpersonal skills','hit the ground running','wealth of experience','unique blend','passion for',
+  'willingness to learn','continuous improvement','i am confident in my ability',
+  'aantoonbare resultaten','meetbare resultaten','proactieve houding','uitdagende functie','mijn passie voor',
   // nl
   'gedreven','resultaatgericht','resultaatgerichte','proactief','proactieve','dynamische omgeving','in een dynamische',
   'passie voor','gepassioneerd','teamspeler','oplossingsgericht','klantgericht','klantgerichte','stressbestendig',
@@ -110,6 +119,8 @@ export const PLACEHOLDERS = [
   /\bas an ai( language model)?\b/i, /\bals (een )?ai(-taalmodel)?\b/i,
   /\b(here is|hier is) (a|an|your|je|uw|een) (tailored |aangepaste )?(cv|resume|résumé|cover letter|motivatiebrief)\b/i,
   /\b(certainly|sure)!? here('s| is)\b/i, /\bzeker!? hier (is|volgt)\b/i,
+  /\bfictional example\b/i, /\b(details|achievements|experience)[^.\n]{0,60}\bare placeholders\b/i,
+  /linkedin\.com\/in\/(your-?name|yourname|firstname-?lastname)\b/i,
   /\blorem ipsum\b/i, /\{\{?\s*\w+\s*\}?\}/, /\bxx+(\/|-)xx+\b/i,
 ];
 
@@ -127,3 +138,10 @@ export const TAILOR_ARTEFACTS = [
   /\b(based on|matching) the job description\b/i,
   /\bafgestemd op (deze|de) vacature\b/i,
 ];
+
+// US spelling, which slips into ChatGPT text written for European applicants, and its British counterpart.
+const ZE = 'organi|optimi|recogni|prioriti|speciali|reali|summari|utili|maximi|minimi|customi|standardi|visuali|finali|emphasi|mobili|categori|digitali';
+export const US_SPELLING = new RegExp(`\\b(?:(?:${ZE})z(?:e|ed|es|ing|ation|ations)|analyz(?:e|ed|es|ing)|(?:colo|behavio|favo|hono)rs?|centers?)\\b`, 'giu');
+export const UK_SPELLING = new RegExp(`\\b(?:(?:${ZE})s(?:e|ed|es|ing|ation|ations)|analys(?:e|ed|es|ing)|(?:colo|behavio|favo|hono)urs?|centres?|learnt|programmes?)\\b`, 'giu');
+// Openings that address nobody in particular.
+export const GENERIC_GREETING = /^\s*(dear (hiring manager|hiring team|recruit(er|ment team)|sir or madam|sir\/madam)|to whom it may concern|geachte heer\/mevrouw|geachte heer of mevrouw|geachte lezer)\b/im;

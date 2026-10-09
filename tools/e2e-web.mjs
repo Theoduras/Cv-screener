@@ -46,6 +46,21 @@ ok((await page.textContent('#saved')).includes('Python people'), 'saved search k
 await page.click('.chip-apply');
 ok(await page.$$eval('tbody tr', t => t.length) === 1, 'saved search re-applies');
 
+// a CV + letter fully written by ChatGPT, as real PDFs through pdf.js: both should come out red
+await page.click('#reset');
+await page.setInputFiles('#files', [fx('Thomas_Vermeulen_CV.pdf'), fx('Thomas_Vermeulen_Cover_Letter.pdf')]);
+await page.waitForFunction(() => document.querySelectorAll('tbody tr').length === 3 && document.querySelectorAll('.doc-mark').length === 3, null, { timeout: 30000 });
+await page.click('tbody tr:has-text("Thomas Vermeulen")');
+const verdict = await page.textContent('.verdicts');
+const ai = [...verdict.split(/Sent or tailored/)[0].matchAll(/(CV|Cover letter)\s*(\d+)/g)].map(m => +m[2]);
+ok(ai.length === 2 && ai.every(n => n >= 55), 'ChatGPT CV and letter both score red: ' + ai.join(', '));
+console.log('     ', verdict.split(/Sent or tailored/)[0].replace(/\s+/g, ' ').slice(0, 900));
+if (process.argv.includes('--shots')) {
+  await page.setViewportSize({ width: 1360, height: 1100 });
+  await page.screenshot({ path: path.join(root, 'docs/screenshots/19-ai-signals.png') });
+}
+await page.click('#closeDrawer');
+
 if (process.argv.includes('--shots')) {
   await page.click('#reset');
   await page.setViewportSize({ width: 1360, height: 900 });

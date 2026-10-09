@@ -2,7 +2,7 @@ import * as db from './lib/db.js';
 import { load, store, isExtension, onInbox, onFocusRequest } from './lib/platform.js';
 import { extract, fileKind, ExtractError } from './lib/extract.js';
 import { parseCV } from './lib/parse.js';
-import { aiScore, textHash } from './lib/aiscore.js';
+import { aiScore, textHash, level, AI_VERSION } from './lib/aiscore.js';
 import { tailorScore, shingleSet, overlap } from './lib/tailor.js';
 import { docKind, linkLetters } from './lib/doctype.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
@@ -19,7 +19,8 @@ const uid = () => crypto.randomUUID();
 function analyse(rec) {
   const parsed = parseCV(rec.text, { extraSkills });
   const kind = rec.kindManual || docKind(rec.text, rec.fileName);
-  return { ...rec, ...parsed, kind, hash: textHash(rec.text), baseAi: aiScore(rec.text, { producer: rec.producer, kind }) };
+  const baseAi = aiScore(rec.text, { producer: rec.producer, kind, location: parsed.location, years: parsed.years });
+  return { ...rec, ...parsed, kind, hash: textHash(rec.text), baseAi, aiVersion: AI_VERSION };
 }
 
 // The "sent/tailored by a tool" score depends on the whole set (duplicates, the same person
@@ -44,6 +45,14 @@ function letterSimilarity(letters, holderOf) {
   }
   return out;
 }
+// A hyper-polished letter on a plain, functional CV: the letter was likely written for them.
+function polishGap(letter, cv) {
+  const cvWording = cv.aiRes?.wording || 0;
+  if (cvWording >= 1 || (letter.aiRes?.wording || 0) - cvWording < 2.5) return letter;
+  const score = Math.min(100, letter.aiRes.score + 10);
+  return { ...letter, aiRes: { ...letter.aiRes, score, level: level(score), reasons: [...letter.aiRes.reasons, 'The letter reads far more polished than the CV (+10)'] } };
+}
+
 const worse = (a, b) => b && b.score > a.score ? b : a;
 
 function withDupes(list) {
@@ -77,7 +86,7 @@ function withDupes(list) {
     if (r.kind === 'letter' && links[r.id]) continue; // shown with its CV
     const doc = score(r);
     if (r.kind === 'letter') { out.push({ ...doc, letterOnly: true, letters: [], letterText: r.text }); continue; }
-    const letters = (lettersOf[r.id] || []).map(score);
+    const letters = (lettersOf[r.id] || []).map(l => polishGap(score(l), doc));
     // the table shows the worse of CV and letter, and says which one it was
     const ai = letters.reduce((m, l) => worse(m, { ...l.aiRes, from: 'cover letter' }), { ...doc.aiRes, from: 'CV' });
     const tool = letters.reduce((m, l) => worse(m, { ...l.tailRes, from: 'cover letter' }), { ...doc.tailRes, from: 'CV' });
@@ -559,6 +568,9 @@ $('#vacSave').onclick = async () => {
   extraSkills = await load('extraSkills', []);
   vacancies = await load('vacancies', {});
   saved = await load('savedSearches', []);
+  // the AI check improved since these were stored: score them again
+  const stale = (await db.all()).filter(r => !r.error && r.aiVersion !== AI_VERSION);
+  if (stale.length) await db.put(stale.map(analyse));
   renderSaved();
   await refresh();
   if (isExtension) await drainInbox();

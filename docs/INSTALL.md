@@ -60,7 +60,7 @@ Every CV gets two scores from 0 to 100: green below 25, orange from 25 to 54, re
 
 | | Asks | Looks for |
 |---|---|---|
-| 🤖 **AI** | Was the text *written* by AI? | Typical AI wording ("results-driven", "proven track record", "gedreven"), very uniform sentences and bullets, leftover template text like "[Company Name]", AI CV builders in the PDF details |
+| 🤖 **AI** | Was the text *written* by AI? | Typical AI wording ("results-driven", "proven track record", "I am excited to apply", "gedreven"), lists of three in sentence after sentence, American spelling from a European applicant, a letter that says "your organization" instead of naming you, "Dear Hiring Manager", years of experience that don't match the dates, round results like "by 25%", em-dashes, very uniform sentences, paragraphs and bullets, a letter far more polished than the CV, leftover template text like "[Company Name]", AI CV builders in the PDF details |
 | 📨 **Tool** | Was the CV *sent or rewritten per vacancy* by an auto-apply tool? | Sentences copied word-for-word from your vacancy, the same person sending differently worded CVs to several vacancies, exactly the same CV from different applicants, tiny or hidden text stuffed with keywords, file names like *CV_ATS-optimized*, auto-apply tool names in the PDF details, long keyword lists |
 
 To check the copying, click **📄 Vacancy text** at the top and paste the job ad for that vacancy/req. You only need to do this once per vacancy.
