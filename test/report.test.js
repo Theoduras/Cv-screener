@@ -48,3 +48,19 @@ test('rate limit and missing token', async () => {
   assert.equal((await handle({ message: 'z', step: 's' }, '4.4.4.4', gh)).status, 429);
   assert.equal((await handle({ message: 'z' }, '5.5.5.5', { fetch: gh.fetch, env: {} })).status, 503);
 });
+
+test('label refusal retries without labels; other failures report GitHub status', async () => {
+  const posts = [];
+  const mk = codes => async (url, opts = {}) => {
+    if (opts.method !== 'POST') return { ok: true, status: 200, json: async () => [] };
+    posts.push(JSON.parse(opts.body));
+    const status = codes.shift();
+    return { ok: status < 300, status, json: async () => ({ number: 7 }) };
+  };
+  const env = { GITHUB_TOKEN: 't' };
+  const a = await handle({ message: 'lbl', step: 's' }, '6.6.6.6', { fetch: mk([422, 201]), env });
+  assert.equal(a.status, 201);
+  assert.ok(posts[0].labels && !posts[1].labels);
+  const b = await handle({ message: 'nf', step: 's' }, '7.7.7.7', { fetch: mk([404]), env });
+  assert.deepEqual(b.body, { ok: false, github: 404 });
+});

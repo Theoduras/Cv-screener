@@ -1,48 +1,48 @@
-# CV Screener installeren (voor testers)
+# Installing CV Screener (for testers)
 
-Een Chrome-extensie die grote stapels cv's leest, sorteert en filtert. Daarnaast wijst hij aan welke cv's waarschijnlijk door een AI-tool zijn geschreven. Hij werkt naast elk ATS (Oleeo en andere). **Alle cv's blijven in jouw browser.**
+CV Screener is a Chrome extension that reads, sorts and filters large piles of CVs. It also flags which ones were probably written by an AI tool. It works alongside any ATS (Oleeo and others). **Every CV stays in your own browser.**
 
-## 1. Installeren (2 minuten)
+## 1. Install (2 minutes)
 
-1. Download **cv-screener.zip** via de link die je hebt gekregen en **pak hem uit**: rechtsklik → *Alles uitpakken*. Je krijgt een map `cv-screener`.
-2. Open Chrome (of Edge) en ga naar `chrome://extensions` (Edge: `edge://extensions`).
-3. Zet rechtsboven **Ontwikkelaarsmodus** aan.
-4. Klik op **Uitgepakte extensie laden** en kies de uitgepakte map, dus de map waar `manifest.json` in staat.
-5. Klik op het puzzelstukje naast de adresbalk en zet de **punaise** aan bij *CV Screener*.
+1. Download **cv-screener.zip** from the link you were sent and **unzip it**: right-click → *Extract All*. You get a folder called `cv-screener`.
+2. Open Chrome (or Edge) and go to `chrome://extensions` (Edge: `edge://extensions`).
+3. Turn on **Developer mode**, top right.
+4. Click **Load unpacked** and choose the unzipped folder, the one that contains `manifest.json`.
+5. Click the puzzle piece next to the address bar and **pin** *CV Screener*.
 
-> Zie je bij *Uitgepakte extensie laden* een foutmelding? Dan heb je waarschijnlijk de zip zelf gekozen of een map te hoog. Kies de map met `manifest.json` erin.
+> Getting an error at *Load unpacked*? You probably chose the zip itself, or the folder one level too high. Choose the folder that has `manifest.json` in it.
 >
-> Op een werklaptop kan IT ontwikkelaarsmodus hebben geblokkeerd. Vraag dan of `chrome://extensions` voor jou open mag.
+> On a work laptop, IT may have blocked Developer mode. Ask them to allow `chrome://extensions` for you.
 
-## 2. Gebruiken
+## 2. Use it
 
-**Cv's toevoegen**
-- Klik op het CV Screener-icoon en kies **Open screener**.
-- Sleep cv's (PDF, DOCX of TXT) of een hele map in het vak. Vul eventueel eerst het vacature-/req-nummer in, dan kun je er later op filteren.
-- Of open een kandidaat in je ATS (bijv. Oleeo), klik op het icoon en kies **Pak kandidaat van deze pagina**. De extensie haalt de bijlagen van die pagina op met jouw eigen login. Zit er geen bijlage op, dan gebruikt hij de tekst van de pagina.
+**Add CVs**
+- Click the CV Screener icon → **Open screener**.
+- Drop CVs (PDF, DOCX or TXT), or a whole folder, into the box. Fill in the vacancy/req number first if you want to filter on it later.
+- Or open a candidate in your ATS (e.g. Oleeo), click the icon and choose **Capture candidate from this page**. The extension fetches that page's attachments using your own login. If there is no attachment, it uses the text on the page.
 
-**Filteren en sorteren**
-- Je kunt zoeken op naam, e-mail of tekst, en filteren op locatie, taal, skills (alle of één ervan), jaren ervaring, AI-score en vacature.
-- Klik op een kolomkop om te sorteren. Klik op een kandidaat voor de details en de volledige tekst.
-- Met **Exporteer CSV** download je de gefilterde lijst. Die opent direct in Excel.
-- Onder **Eigen skills** voeg je vaardigheden toe die nog niet herkend worden.
+**Filter and sort**
+- Search by name, email or text, and filter on location, language, skills (all of them or any), years of experience, AI score and vacancy.
+- Click a column header to sort. Click a candidate for the details and the full text.
+- **Export CSV** downloads the filtered list. It opens straight in Excel.
+- Under **Custom skills** you can add skills that aren't recognised yet.
 
-**De AI-score (0–100)**
-- Groen (< 25) betekent weinig signalen, oranje (25–54) een aantal, rood (≥ 55) veel.
-- Zet je muis op de score of open de kandidaat om te zien *waarom*. Signalen zijn bijvoorbeeld typische AI-woorden ("results-driven", "gedreven", "proven track record"), vergeten sjabloontekst zoals "[Bedrijfsnaam]", heel gelijkmatige zinnen, de PDF-maker en precies dezelfde tekst als bij een andere sollicitant.
-- **Het is een indicatie, geen bewijs.** Gebruik de score om te prioriteren, niet om iemand af te wijzen.
+**The AI score (0–100)**
+- Green (< 25) means few signals, orange (25–54) some, red (≥ 55) many.
+- Hover over the score or open the candidate to see *why*. Typical signals are AI wording ("results-driven", "proven track record"), leftover template text such as "[Company Name]", very uniform sentences, the tool the PDF was made with, and exactly the same text as another applicant.
+- **It is an indication, not proof.** Use it to prioritise, never to reject someone on its own.
 
 ## 3. Privacy
 
-- Cv's en kandidaatgegevens worden nergens naartoe gestuurd. Ze staan alleen in deze browser.
-- Gaat er iets mis, dan wordt **alleen de foutmelding** anoniem naar de ontwikkelaar gestuurd: geen namen, geen bestandsnamen en geen cv-tekst.
-- Met **Wis alle cv's** (onderaan) maak je alles leeg.
+- CVs and candidate details are never sent anywhere. They exist only in this browser.
+- If something breaks, **only the error message** is sent to the developer, anonymously. No names, no file names, no CV text.
+- **Delete all CVs** at the bottom of the screen clears everything.
 
-## 4. Problemen melden
+## 4. Reporting problems
 
-Fouten worden automatisch gemeld. Wil je zelf iets laten weten, gebruik dan de knop **Meld probleem** rechtsboven. Zet daar geen kandidaatgegevens in.
+Errors are reported automatically. To tell us something yourself, use **Report a problem** at the top right, and leave candidate details out of it.
 
-## 5. Bijwerken of verwijderen
+## 5. Update or remove
 
-- **Bijwerken:** pak de nieuwe zip uit over de oude map en klik op ↻ bij CV Screener in `chrome://extensions`. Je cv's blijven bewaard.
-- **Verwijderen:** klik op *Verwijderen* in `chrome://extensions`. Daarmee worden ook alle opgeslagen cv's gewist.
+- **Update:** unzip the new version over the old folder, then click ↻ on CV Screener in `chrome://extensions`. Your CVs are kept.
+- **Remove:** click *Remove* in `chrome://extensions`. This also deletes all stored CVs.

@@ -37,14 +37,14 @@ await app.fill('#tagInput', 'REQ-1042 Recruiter');
 await app.setInputFiles('#files', [pdfPath, path.join(root, 'test/fixtures/human-nl.docx'), ...Object.keys(extra).map(f => path.join(tmp, f))]);
 await app.waitForFunction(() => document.querySelectorAll('tbody tr').length === 5, null, { timeout: 30000 });
 await app.click('th[data-k="ai"]');
-await app.screenshot({ path: out('1-overzicht.png') });
+await app.screenshot({ path: out('1-overview.png') });
 
-await app.fill('#fai', '40'); await app.selectOption('#flang', 'Engels');
-await app.screenshot({ path: out('2-filter.png') });
+await app.fill('#fai', '40'); await app.selectOption('#flang', 'English');
+await app.screenshot({ path: out('2-filtered.png') });
 await app.click('#reset');
 
 await app.click('tbody tr:first-child');
-await app.screenshot({ path: out('3-ai-uitleg.png') });
+await app.screenshot({ path: out('3-ai-explanation.png') });
 await app.click('#closeDrawer');
 
 const pop = await ctx.newPage();
@@ -54,8 +54,8 @@ await pop.screenshot({ path: out('4-popup.png') });
 
 const site = await ctx.newPage();
 await site.goto('file://' + path.join(root, 'site/index.html'));
-await site.screenshot({ path: out('5-downloadpagina.png') });
+await site.screenshot({ path: out('5-download-page.png') });
 await site.setViewportSize({ width: 390, height: 844 });
-await site.screenshot({ path: out('6-downloadpagina-mobiel.png') });
+await site.screenshot({ path: out('6-download-page-mobile.png') });
 await ctx.close();
 console.log('done');

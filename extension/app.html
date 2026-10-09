@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><title>CV Screener</title>
+<html lang="en"><head><meta charset="utf-8"><title>CV Screener</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="app.css">
 <script src="vendor/pdf.min.js"></script>
@@ -10,60 +10,60 @@
   <h1>CV Screener</h1>
   <span id="count"></span>
   <span class="spacer"></span>
-  <button id="settingsBtn" class="ghost">Eigen skills</button>
-  <button id="reportBtn" class="ghost">Meld probleem</button>
-  <button id="exportBtn">Exporteer CSV</button>
+  <button id="settingsBtn" class="ghost">Custom skills</button>
+  <button id="reportBtn" class="ghost">Report a problem</button>
+  <button id="exportBtn">Export CSV</button>
 </header>
 
 <section id="intake">
   <div id="drop">
-    <strong>Sleep cv's hierheen</strong> (PDF, DOCX, TXT – ook een hele map)
+    <strong>Drop CVs here</strong> (PDF, DOCX, TXT – or a whole folder)
     <div class="row">
-      <label class="btn">Kies bestanden<input type="file" id="files" multiple accept=".pdf,.docx,.doc,.txt,.html,.htm" hidden></label>
-      <label class="btn">Kies map<input type="file" id="folder" webkitdirectory hidden></label>
-      <input id="tagInput" placeholder="Vacature / req (bijv. REQ-1234)">
+      <label class="btn">Choose files<input type="file" id="files" multiple accept=".pdf,.docx,.doc,.txt,.html,.htm" hidden></label>
+      <label class="btn">Choose folder<input type="file" id="folder" webkitdirectory hidden></label>
+      <input id="tagInput" placeholder="Vacancy / req (e.g. REQ-1234)">
     </div>
     <progress id="prog" hidden></progress><span id="progText"></span>
   </div>
 </section>
 
 <section id="filters">
-  <input id="fq" placeholder="Zoek naam, e-mail, tekst…">
-  <input id="floc" placeholder="Locatie">
-  <select id="flang"><option value="">Elke taal</option></select>
-  <input id="fskills" placeholder="Skills, komma-gescheiden">
-  <select id="fmode"><option value="all">alle skills</option><option value="any">één ervan</option></select>
-  <label>Jaren <input id="fmin" type="number" min="0" placeholder="min"> – <input id="fmax" type="number" min="0" placeholder="max"></label>
-  <label>AI-score ≤ <input id="fai" type="number" min="0" max="100" placeholder="100"></label>
-  <select id="ftag"><option value="">Alle vacatures</option></select>
-  <button id="reset" class="ghost">Wis filters</button>
+  <input id="fq" placeholder="Search name, email, text…">
+  <input id="floc" placeholder="Location">
+  <select id="flang"><option value="">Any language</option></select>
+  <input id="fskills" placeholder="Skills, comma-separated">
+  <select id="fmode"><option value="all">all skills</option><option value="any">any of them</option></select>
+  <label>Years <input id="fmin" type="number" min="0" placeholder="min"> – <input id="fmax" type="number" min="0" placeholder="max"></label>
+  <label>AI score ≤ <input id="fai" type="number" min="0" max="100" placeholder="100"></label>
+  <select id="ftag"><option value="">All vacancies</option></select>
+  <button id="reset" class="ghost">Clear filters</button>
 </section>
 
 <table id="tbl">
   <thead><tr>
-    <th data-k="name">Naam</th><th data-k="location">Locatie</th><th data-k="languages">Talen</th>
-    <th data-k="years">Jaren</th><th data-k="skills">Skills</th><th data-k="education">Opleiding</th>
-    <th data-k="ai">AI-score</th><th data-k="tag">Vacature</th><th data-k="addedAt">Toegevoegd</th>
+    <th data-k="name">Name</th><th data-k="location">Location</th><th data-k="languages">Languages</th>
+    <th data-k="years">Years</th><th data-k="skills">Skills</th><th data-k="education">Education</th>
+    <th data-k="ai">AI score</th><th data-k="tag">Vacancy</th><th data-k="addedAt">Added</th>
   </tr></thead>
   <tbody></tbody>
 </table>
-<p id="empty" hidden>Nog geen cv's. Sleep bestanden hierboven, of gebruik “Pak kandidaat van deze pagina” in je ATS.</p>
+<p id="empty" hidden>No CVs yet. Drop files above, or use “Capture candidate from this page” in your ATS.</p>
 <footer>
-  Alles blijft in deze browser. Bij een fout wordt alleen de foutmelding anoniem verstuurd – nooit cv-inhoud.
-  <button id="clearAll" class="danger">Wis alle cv's</button>
+  Everything stays in this browser. If something breaks, only the error message is sent, anonymously – never CV content.
+  <button id="clearAll" class="danger">Delete all CVs</button>
 </footer>
 
 <aside id="drawer" hidden>
-  <button id="closeDrawer" class="ghost">Sluiten ✕</button>
+  <button id="closeDrawer" class="ghost">Close ✕</button>
   <div id="drawerBody"></div>
 </aside>
 
 <dialog id="settings">
   <form method="dialog">
-    <h2>Eigen skills</h2>
-    <p>Eén per regel. Worden naast de standaardlijst herkend.</p>
+    <h2>Custom skills</h2>
+    <p>One per line. Recognised in addition to the built-in list.</p>
     <textarea id="extraSkills" rows="10"></textarea>
-    <div class="row"><button value="save" id="saveSkills">Opslaan en opnieuw analyseren</button><button value="cancel" class="ghost">Annuleer</button></div>
+    <div class="row"><button value="save" id="saveSkills">Save and re-analyse</button><button value="cancel" class="ghost">Cancel</button></div>
   </form>
 </dialog>
 

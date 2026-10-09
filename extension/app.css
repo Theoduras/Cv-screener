@@ -24,7 +24,7 @@ th.sorted::after{content:" ▾"}th.sorted.asc::after{content:" ▴"}
 tbody tr{cursor:pointer}tbody tr:hover{background:#f7f5ff}
 td.skills{max-width:320px;color:var(--muted)}
 .ai{display:inline-block;min-width:38px;text-align:center;padding:2px 6px;border-radius:10px;color:#fff;font-weight:600}
-.ai.laag{background:var(--low)}.ai.middel{background:var(--mid)}.ai.hoog{background:var(--high)}
+.ai.low{background:var(--low)}.ai.medium{background:var(--mid)}.ai.high{background:var(--high)}
 .err td{color:var(--high)}
 #empty{padding:20px;color:var(--muted);text-align:center}
 footer{padding:16px 20px;color:var(--muted);font-size:12px;display:flex;gap:12px;align-items:center;justify-content:space-between}

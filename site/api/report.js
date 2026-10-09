@@ -14,7 +14,7 @@ export async function handle(body, ip, { fetch: f = fetch, env = process.env } =
   hits.set(ip, [...h, now]);
 
   if (!env.GITHUB_TOKEN) return { status: 503, body: { ok: false, error: 'not configured' } };
-  const repo = env.GITHUB_REPO || 'theoduras/cv-screener';
+  const repo = env.GITHUB_REPO || 'Theoduras/Cv-screener';
   const r = {
     message: clip(body.message, 300), stack: clip(body.stack, 2000), step: clip(body.step, 40),
     fileType: clip(body.fileType, 20), fileSize: clip(body.fileSize, 12), comment: clip(body.comment, 1000),
@@ -27,9 +27,9 @@ export async function handle(body, ip, { fetch: f = fetch, env = process.env } =
 
   const sig = createHash('sha256').update(`${r.step}|${r.message}`).digest('hex').slice(0, 10);
   const details = [
-    `**Stap:** \`${r.step}\`  **Versie:** ${r.version}  **Bestand:** ${r.fileType || '-'} ${r.fileSize}`,
+    `**Step:** \`${r.step}\`  **Version:** ${r.version}  **File:** ${r.fileType || '-'} ${r.fileSize}`,
     `**Browser:** ${r.browser}`,
-    r.comment && `**Opmerking tester:**\n> ${r.comment.replace(/\n/g, '\n> ')}`,
+    r.comment && `**Tester comment:**\n> ${r.comment.replace(/\n/g, '\n> ')}`,
     r.stack && '```\n' + r.stack + '\n```',
   ].filter(Boolean).join('\n\n');
 
@@ -38,16 +38,17 @@ export async function handle(body, ip, { fetch: f = fetch, env = process.env } =
     const open = res.ok ? await res.json() : [];
     const existing = open.find(i => i.title.includes(`[${sig}]`));
     if (existing) {
-      await gh(`/issues/${existing.number}/comments`, { method: 'POST', body: JSON.stringify({ body: `+1 – opnieuw gemeld\n\n${details}` }) });
+      await gh(`/issues/${existing.number}/comments`, { method: 'POST', body: JSON.stringify({ body: `+1 – reported again\n\n${details}` }) });
       return { status: 200, body: { ok: true, issue: existing.number, duplicate: true } };
     }
   }
-  const title = r.manual ? `[melding] ${clip(r.comment || 'Handmatige melding', 80)}` : `[auto] ${clip(r.message, 80)} [${sig}]`;
-  const res = await gh('/issues', {
-    method: 'POST',
-    body: JSON.stringify({ title, body: `**Fout:** ${r.message}\n\n${details}`, labels: [r.manual ? 'tester-report' : 'auto-report'] }),
-  });
-  if (!res.ok) return { status: 502, body: { ok: false } };
+  const title = r.manual ? `[report] ${clip(r.comment || 'Manual report', 80)}` : `[auto] ${clip(r.message, 80)} [${sig}]`;
+  const issue = labels => gh('/issues', { method: 'POST', body: JSON.stringify({ title, body: `**Error:** ${r.message}\n\n${details}`, ...(labels ? { labels } : {}) }) });
+  let res = await issue([r.manual ? 'tester-report' : 'auto-report']);
+  // A token that may not create labels must not cost us the report.
+  if (res.status === 403 || res.status === 422) res = await issue(null);
+  // GitHub's status only (never the token or its body), so a misconfigured token can be diagnosed with one curl.
+  if (!res.ok) return { status: 502, body: { ok: false, github: res.status } };
   return { status: 201, body: { ok: true, issue: (await res.json()).number } };
 }
 

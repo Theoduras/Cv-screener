@@ -1,4 +1,4 @@
-// Injected into the active ATS tab on demand (popup -> "Pak deze pagina").
+// Injected into the active ATS tab on demand (popup -> "Capture candidate from this page").
 // Returns the visible page text plus any CV attachments, fetched with the page's own session.
 (async () => {
   const MAX = 8, MAX_BYTES = 20e6;
@@ -20,12 +20,12 @@
       const type = r.headers.get('content-type') || '';
       if (!/pdf|word|officedocument|octet-stream/i.test(type)) continue;
       const buf = await r.arrayBuffer();
-      if (buf.byteLength > MAX_BYTES) throw new Error('te groot');
+      if (buf.byteLength > MAX_BYTES) throw new Error('too large');
       let bin = '';
       const bytes = new Uint8Array(buf);
       for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       const cd = r.headers.get('content-disposition') || '';
-      const name = (cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/i) || [])[1] || url.split(/[?#]/)[0].split('/').pop() || 'bijlage';
+      const name = (cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/i) || [])[1] || url.split(/[?#]/)[0].split('/').pop() || 'attachment';
       files.push({ name: decodeURIComponent(name), type, b64: btoa(bin) });
     } catch (e) { errors.push(String(e.message || e)); }
   }

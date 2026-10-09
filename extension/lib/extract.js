@@ -47,9 +47,9 @@ export async function extract(buf, name, mime) {
   else if (kind === 'html') {
     const doc = new DOMParser().parseFromString(new TextDecoder().decode(buf), 'text/html');
     res = { text: doc.body?.innerText || doc.body?.textContent || '', producer: '' };
-  } else if (kind === 'doc') throw new ExtractError('Oud Word-formaat (.doc) wordt niet ondersteund – sla op als .docx of PDF.');
-  else throw new ExtractError('Bestandstype niet ondersteund.');
+  } else if (kind === 'doc') throw new ExtractError('Old Word format (.doc) is not supported – save it as .docx or PDF.');
+  else throw new ExtractError('File type not supported.');
   if (res.text.replace(/\s/g, '').length < 50)
-    throw new ExtractError('Geen tekst gevonden – waarschijnlijk een gescande PDF of afbeelding.');
+    throw new ExtractError('No text found – probably a scanned PDF or an image.');
   return { ...res, kind };
 }

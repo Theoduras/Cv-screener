@@ -11,20 +11,20 @@ const openApp = async () => {
 document.getElementById('open').onclick = openApp;
 
 document.getElementById('capture').onclick = async () => {
-  msg('Bezig…');
+  msg('Working…');
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !/^https?:/.test(tab.url || '')) return msg('Open eerst de kandidaat in je ATS.');
+    if (!tab?.id || !/^https?:/.test(tab.url || '')) return msg('Open the candidate in your ATS first.');
     const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['capture.js'] });
     if (!result) throw new Error('capture returned nothing');
     const { inbox = [] } = await chrome.storage.local.get('inbox');
     inbox.push({ ...result, at: Date.now() });
     await chrome.storage.local.set({ inbox });
     if (result.errors.length) report(new Error(result.errors.join('; ')), { step: 'capture-fetch' });
-    msg(`Opgehaald: ${result.files.length} bijlage(n)${result.files.length ? '' : ' – paginatekst gebruikt'}.`);
+    msg(`Captured ${result.files.length} attachment(s)${result.files.length ? '' : ' – used the page text'}.`);
     setTimeout(openApp, 600);
   } catch (e) {
-    msg('Kon deze pagina niet lezen. De fout is gemeld.');
+    msg('Could not read this page. The error has been reported.');
     report(e, { step: 'capture' });
   }
 };

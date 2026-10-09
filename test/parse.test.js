@@ -12,21 +12,21 @@ test('parses a Dutch human CV', () => {
   assert.equal(c.name, 'Sanne de Vries');
   assert.equal(c.email, 'sanne.devries@example.nl');
   assert.equal(c.location, 'Utrecht');
-  assert.deepEqual(c.languages.sort(), ['Duits', 'Engels', 'Nederlands']);
-  assert.equal(c.cvLanguage, 'Nederlands');
+  assert.deepEqual(c.languages.sort(), ['Dutch', 'English', 'German']);
+  assert.equal(c.cvLanguage, 'Dutch');
   assert.ok(c.skills.includes('salarisadministratie'));
   assert.ok(c.years >= 11 && c.years < 12, `years ${c.years}`); // 2015..now(2026-10), education excluded
-  assert.equal(c.education, 'HBO/Bachelor');
+  assert.equal(c.education, 'Bachelor');
 });
 
 test('parses an English CV', () => {
   const c = parseCV(ai);
   assert.equal(c.name, 'John Petersen');
   assert.equal(c.location, 'Amsterdam');
-  assert.deepEqual(c.languages.sort(), ['Engels', 'Nederlands']);
+  assert.deepEqual(c.languages.sort(), ['Dutch', 'English']);
   for (const s of ['python', 'docker', 'aws', 'react', 'postgresql', 'ci/cd']) assert.ok(c.skills.includes(s), s);
   assert.ok(!c.skills.includes('java'), 'javascript-free CV must not match java');
-  assert.equal(c.education, 'WO/Master');
+  assert.equal(c.education, 'Master');
 });
 
 test('overlapping jobs are not double counted', () => {
@@ -38,7 +38,7 @@ test('AI score separates the two fixtures', () => {
   const h = aiScore(human), a = aiScore(ai);
   assert.ok(h.score < 25, `human ${h.score} ${h.reasons}`);
   assert.ok(a.score >= 55, `ai ${a.score} ${a.reasons}`);
-  assert.ok(a.reasons.some(r => r.includes('sjabloon')));
+  assert.ok(a.reasons.some(r => r.includes('template')));
 });
 
 test('producer and duplicates raise the score', () => {

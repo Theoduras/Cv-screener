@@ -48,12 +48,12 @@ async function ingest(files) {
   const out = [];
   for (const f of files) {
     $('#progText').textContent = ` ${prog.value + 1}/${files.length}`;
-    out.push(await addFromBytes(await f.arrayBuffer(), f.name, f.type, { source: 'bestand', tag }));
+    out.push(await addFromBytes(await f.arrayBuffer(), f.name, f.type, { source: 'file', tag }));
     prog.value++;
     if (out.length >= 25) { await db.put(out.splice(0)); await refresh(); }
   }
   await db.put(out);
-  prog.hidden = true; $('#progText').textContent = ` ${files.length} verwerkt.`;
+  prog.hidden = true; $('#progText').textContent = ` ${files.length} processed.`;
   await refresh();
 }
 
@@ -63,15 +63,15 @@ async function drainInbox() {
   await store('inbox', []);
   const out = [];
   for (const cap of inbox) {
-    const extra = { source: 'ATS-pagina', tag: cap.title, pageUrl: cap.url };
+    const extra = { source: 'ATS page', tag: cap.title, pageUrl: cap.url };
     for (const f of cap.files) {
       const bin = Uint8Array.from(atob(f.b64), c => c.charCodeAt(0));
       out.push(await addFromBytes(bin.buffer, f.name, f.type, extra));
     }
     if (!cap.files.length) {
       out.push(cap.text.replace(/\s/g, '').length > 50
-        ? analyse({ id: uid(), addedAt: Date.now(), fileName: '(paginatekst)', fileType: 'page', text: cap.text, producer: '', ...extra })
-        : { id: uid(), addedAt: Date.now(), fileName: '(pagina)', error: 'Geen cv op deze pagina gevonden.', name: cap.title, text: '', ...extra });
+        ? analyse({ id: uid(), addedAt: Date.now(), fileName: '(page text)', fileType: 'page', text: cap.text, producer: '', ...extra })
+        : { id: uid(), addedAt: Date.now(), fileName: '(page)', error: 'No CV found on this page.', name: cap.title, text: '', ...extra });
     }
   }
   await db.put(out);
@@ -111,12 +111,12 @@ function filtered() {
 
 function render() {
   const list = filtered();
-  $('#count').textContent = `${list.length} van ${rows.length} cv's`;
+  $('#count').textContent = `${list.length} of ${rows.length} CVs`;
   $('#empty').hidden = rows.length > 0;
   $('#tbl tbody').innerHTML = list.map(r => r.error ? `
-    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="5">⚠ ${esc(r.error)}</td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('nl')}</td></tr>` : `
+    <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="5">⚠ ${esc(r.error)}</td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
     <tr data-id="${r.id}">
-      <td>${esc(r.name || '(onbekend)')}<div class="note">${esc(r.email)}</div></td>
+      <td>${esc(r.name || '(unknown)')}<div class="note">${esc(r.email)}</div></td>
       <td>${esc(r.location)}</td>
       <td>${esc((r.languages.length ? r.languages : [r.cvLanguage]).filter(Boolean).join(', '))}</td>
       <td>${r.years || ''}</td>
@@ -124,7 +124,7 @@ function render() {
       <td>${esc(r.education)}</td>
       <td><span class="ai ${r.aiRes.level}" title="${esc(r.aiRes.reasons.join('\n'))}">${r.aiRes.score}</span></td>
       <td>${esc(r.tag)}</td>
-      <td>${new Date(r.addedAt).toLocaleDateString('nl')}</td>
+      <td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td>
     </tr>`).join('');
   document.querySelectorAll('th').forEach(th => {
     th.classList.toggle('sorted', th.dataset.k === sortKey);
@@ -140,26 +140,26 @@ function fillSelect(sel, values, first) {
 
 async function refresh() {
   rows = withDupes(await db.all());
-  fillSelect($('#flang'), [...new Set(rows.flatMap(r => [...(r.languages || []), r.cvLanguage]).filter(Boolean))].sort(), 'Elke taal');
-  fillSelect($('#ftag'), [...new Set(rows.map(r => r.tag).filter(Boolean))].sort(), 'Alle vacatures');
+  fillSelect($('#flang'), [...new Set(rows.flatMap(r => [...(r.languages || []), r.cvLanguage]).filter(Boolean))].sort(), 'Any language');
+  fillSelect($('#ftag'), [...new Set(rows.map(r => r.tag).filter(Boolean))].sort(), 'All vacancies');
   render();
 }
 
 function openDrawer(id) {
   const r = rows.find(x => x.id === id);
   if (!r) return;
-  const dl = [['Naam', r.name], ['E-mail', r.email], ['Telefoon', r.phone], ['LinkedIn', r.linkedin], ['Locatie', r.location],
-    ['Talen', (r.languages || []).join(', ')], ['Taal van cv', r.cvLanguage], ['Jaren ervaring', r.years], ['Opleiding', r.education],
-    ['Skills', (r.skills || []).join(', ')], ['Vacature', r.tag], ['Bron', `${r.source || ''} – ${r.fileName || ''}`], ['PDF-maker', r.producer]];
+  const dl = [['Name', r.name], ['Email', r.email], ['Phone', r.phone], ['LinkedIn', r.linkedin], ['Location', r.location],
+    ['Languages', (r.languages || []).join(', ')], ['CV written in', r.cvLanguage], ['Years of experience', r.years], ['Education', r.education],
+    ['Skills', (r.skills || []).join(', ')], ['Vacancy', r.tag], ['Source', `${r.source || ''} – ${r.fileName || ''}`], ['PDF made with', r.producer]];
   $('#drawerBody').innerHTML = `
     <h2>${esc(r.name || r.fileName)}</h2>
     ${r.error ? `<p>⚠ ${esc(r.error)}</p>` : `
-    <h3>AI-score: <span class="ai ${r.aiRes.level}">${r.aiRes.score}</span></h3>
-    <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>Geen signalen gevonden.</li>'}</ul>
-    <p class="note">Een indicatie, geen bewijs. Gebruik het om te prioriteren, niet om af te wijzen.</p>
+    <h3>AI score: <span class="ai ${r.aiRes.level}">${r.aiRes.score}</span></h3>
+    <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>
+    <p class="note">An indication, not proof. Use it to prioritise, not to reject.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    <h3>Tekst</h3><pre>${esc(r.text)}</pre>`}
-    <button class="danger" id="delOne">Verwijder deze kandidaat</button>`;
+    <h3>Text</h3><pre>${esc(r.text)}</pre>`}
+    <button class="danger" id="delOne">Delete this candidate</button>`;
   $('#delOne').onclick = async () => { await db.remove(id); $('#drawer').hidden = true; refresh(); };
   $('#drawer').hidden = false;
 }
@@ -169,8 +169,8 @@ function exportCsv() {
   const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = filtered().map(r => cols.map(c => cell(
     c === 'ai' ? r.aiRes?.score : c === 'aiReasons' ? r.aiRes?.reasons.join(' | ') :
-    c === 'addedAt' ? new Date(r.addedAt).toISOString() : Array.isArray(r[c]) ? r[c].join(', ') : r[c])).join(';'));
-  const blob = new Blob(['﻿' + [cols.join(';'), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    c === 'addedAt' ? new Date(r.addedAt).toISOString() : Array.isArray(r[c]) ? r[c].join(', ') : r[c])).join(','));
+  const blob = new Blob(['﻿' + [cols.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `cv-screener-${new Date().toISOString().slice(0, 10)}.csv` });
   a.click(); URL.revokeObjectURL(a.href);
 }
@@ -208,12 +208,12 @@ document.querySelector('thead').onclick = e => {
 $('#tbl tbody').onclick = e => { const tr = e.target.closest('tr'); if (tr) openDrawer(tr.dataset.id); };
 $('#closeDrawer').onclick = () => { $('#drawer').hidden = true; };
 $('#exportBtn').onclick = exportCsv;
-$('#clearAll').onclick = async () => { if (confirm("Alle cv's uit deze browser verwijderen?")) { await db.clear(); refresh(); } };
+$('#clearAll').onclick = async () => { if (confirm('Delete all CVs from this browser?')) { await db.clear(); refresh(); } };
 $('#reportBtn').onclick = async () => {
-  const comment = prompt('Wat ging er mis? (zet hier geen kandidaatgegevens in)');
+  const comment = prompt('What went wrong? (please do not include candidate details)');
   if (comment === null) return;
-  await report(new Error('Handmatige melding'), { step: 'manual', manual: true, comment });
-  alert('Bedankt, je melding is verstuurd.');
+  await report(new Error('Manual report'), { step: 'manual', manual: true, comment });
+  alert('Thanks, your report has been sent.');
 };
 $('#settingsBtn').onclick = () => { $('#extraSkills').value = extraSkills.join('\n'); $('#settings').showModal(); };
 $('#saveSkills').onclick = async () => {

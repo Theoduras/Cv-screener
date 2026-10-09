@@ -57,7 +57,7 @@ await app.fill('#fai', '');
 await app.fill('#fskills', 'python, docker');
 ok(await app.$$eval('tbody tr', t => t.length) === 2, 'skills filter');
 await app.fill('#fskills', '');
-await app.selectOption('#flang', 'Duits');
+await app.selectOption('#flang', 'German');
 ok(await app.$$eval('tbody tr', t => t.length) === 1, 'language filter');
 await app.click('#reset');
 const [dl] = await Promise.all([app.waitForEvent('download'), app.click('#exportBtn')]);

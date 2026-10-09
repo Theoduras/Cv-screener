@@ -22,7 +22,7 @@ export function aiScore(text, { producer = '', duplicates = 0 } = {}) {
   const nHits = Object.values(hits).reduce((a, b) => a + b, 0);
   const per100 = nHits / words * 100;
   const top = Object.entries(hits).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([p, n]) => n > 1 ? `${p} ×${n}` : p);
-  add(Math.min(40, Math.max(0, per100 - 0.4) * 22), `Typische AI-woorden: ${top.join(', ')}`);
+  add(Math.min(40, Math.max(0, per100 - 0.4) * 22), `Typical AI wording: ${top.join(', ')}`);
 
   const dashes = (text.match(/—/g) || []).length;
   add(Math.min(12, dashes / words * 1000 * 1.5), `${dashes} em-dashes (—)`);
@@ -30,23 +30,23 @@ export function aiScore(text, { producer = '', duplicates = 0 } = {}) {
   const sentences = text.replace(/\n+/g, ' ').split(/(?<=[.!?])\s+/).map(s => (s.match(/\p{L}+/gu) || []).length).filter(n => n >= 4);
   if (sentences.length >= 8) {
     const v = cv(sentences);
-    add(Math.min(15, (0.45 - v) * 60), `Zinnen zijn opvallend even lang (variatie ${v.toFixed(2)})`);
+    add(Math.min(15, (0.45 - v) * 60), `Sentences are unusually uniform in length (variation ${v.toFixed(2)})`);
   }
 
   const bullets = text.split('\n').map(l => l.trim()).filter(l => /^[•▪●◦\-*–]\s+\S/.test(l)).map(l => l.length);
   if (bullets.length >= 6) {
     const v = cv(bullets);
-    add(Math.min(10, (0.3 - v) * 50), `${bullets.length} opsommingstekens van bijna gelijke lengte`);
+    add(Math.min(10, (0.3 - v) * 50), `${bullets.length} bullet points of near-identical length`);
   }
 
   const ph = PLACEHOLDERS.map(re => (text.match(re) || [])[0]).filter(Boolean);
-  if (ph.length) add(Math.min(60, 45 + 10 * (ph.length - 1)), `Achtergebleven sjabloon/AI-tekst: "${ph[0].slice(0, 50)}"`);
+  if (ph.length) add(Math.min(60, 45 + 10 * (ph.length - 1)), `Leftover template/AI text: "${ph[0].slice(0, 50)}"`);
 
-  if (producer && AI_PRODUCERS.test(producer)) add(25, `PDF gemaakt met "${producer.slice(0, 40)}"`);
-  if (duplicates > 0) add(Math.min(25, 15 + 5 * duplicates), `Zelfde tekst als ${duplicates} andere sollicitatie(s)`);
+  if (producer && AI_PRODUCERS.test(producer)) add(25, `PDF made with "${producer.slice(0, 40)}"`);
+  if (duplicates > 0) add(Math.min(25, 15 + 5 * duplicates), `Same text as ${duplicates} other application(s)`);
 
   score = Math.min(100, Math.round(score));
-  return { score, level: score >= 55 ? 'hoog' : score >= 25 ? 'middel' : 'laag', reasons };
+  return { score, level: score >= 55 ? 'high' : score >= 25 ? 'medium' : 'low', reasons };
 }
 
 // Stable fingerprint of the content, ignoring whitespace/case, to spot mass-sent CVs.

@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="nl"><head>
+<html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CV Screener</title>
-<meta name="description" content="Chrome-extensie: grote stapels cv's lezen, filteren en controleren op AI – lokaal, naast elk ATS.">
+<meta name="description" content="Chrome extension: read, filter and check large piles of CVs for AI writing – locally, alongside any ATS.">
 <style>
 :root{--ink:#1d1b26;--muted:#6b6880;--line:#e4e1ee;--bg:#faf9fd;--card:#fff;--accent:#5b3fd1}
 @media (prefers-color-scheme:dark){:root{--ink:#ecebf3;--muted:#a19eb5;--line:#34303f;--bg:#15131b;--card:#1e1b27;--accent:#8b74ff}}
@@ -20,37 +20,37 @@ code{background:var(--card);border:1px solid var(--line);padding:1px 6px;border-
 </style></head>
 <body><main>
 <h1>CV Screener</h1>
-<p class="lede">Lees, filter en controleer honderden cv's tegelijk, naast je eigen ATS. Alles blijft in je browser.</p>
+<p class="lede">Read, filter and check hundreds of CVs at once, alongside your own ATS. Everything stays in your browser.</p>
 <a class="dl" href="cv-screener.zip" download>Download cv-screener.zip</a>
-<p class="small">Chrome of Edge · versie 0.1 (testversie)</p>
-<img src="screenshot.png" alt="Het screener-scherm: cv's in een tabel met locatie, talen, jaren ervaring, skills en AI-score">
+<p class="small">Chrome or Edge · version 0.1 (test build)</p>
+<img src="screenshot.png" alt="The screener: CVs in a table with location, languages, years of experience, skills and AI score">
 
-<h2>Installeren (2 minuten)</h2>
+<h2>Install (2 minutes)</h2>
 <ol>
-  <li>Download de zip hierboven en <strong>pak hem uit</strong>: rechtsklik → <em>Alles uitpakken</em>.</li>
-  <li>Ga in Chrome naar <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li>
-  <li>Zet rechtsboven <strong>Ontwikkelaarsmodus</strong> aan.</li>
-  <li>Klik op <strong>Uitgepakte extensie laden</strong> en kies de uitgepakte map, dus de map met <code>manifest.json</code> erin.</li>
-  <li>Klik op het puzzelstukje naast de adresbalk en zet de punaise aan bij <em>CV Screener</em>.</li>
+  <li>Download the zip above and <strong>unzip it</strong>: right-click → <em>Extract All</em>.</li>
+  <li>In Chrome, go to <code>chrome://extensions</code> (Edge: <code>edge://extensions</code>).</li>
+  <li>Turn on <strong>Developer mode</strong>, top right.</li>
+  <li>Click <strong>Load unpacked</strong> and choose the unzipped folder, the one with <code>manifest.json</code> in it.</li>
+  <li>Click the puzzle piece next to the address bar and pin <em>CV Screener</em>.</li>
 </ol>
-<div class="card small">Foutmelding bij het laden? Dan heb je waarschijnlijk de zip zelf gekozen of een map te hoog. Op een werklaptop kan IT ontwikkelaarsmodus geblokkeerd hebben, vraag dan of het voor jou open mag.</div>
+<div class="card small">Error while loading? You probably chose the zip itself, or the folder one level too high. On a work laptop, IT may have blocked Developer mode, so ask them to allow it for you.</div>
 
-<h2>Gebruiken</h2>
+<h2>Use it</h2>
 <ul>
-  <li><strong>Cv's toevoegen:</strong> klik op het icoon, kies <em>Open screener</em> en sleep er PDF-, DOCX- of TXT-bestanden of een hele map in. Vul eerst het vacature-/req-nummer in als je er later op wilt filteren.</li>
-  <li><strong>Vanuit je ATS (bijv. Oleeo):</strong> open een kandidaat, klik op het icoon en kies <em>Pak kandidaat van deze pagina</em>. De bijlagen worden opgehaald met jouw eigen login.</li>
-  <li><strong>Filteren:</strong> op naam, locatie, taal, skills, jaren ervaring, AI-score en vacature. Klik op een kolomkop om te sorteren en op een kandidaat voor de details.</li>
-  <li><strong>Exporteer CSV</strong> downloadt de gefilterde lijst, klaar voor Excel.</li>
-  <li><strong>Eigen skills</strong> zijn vaardigheden die je zelf toevoegt aan de herkenning.</li>
+  <li><strong>Add CVs:</strong> click the icon → <em>Open screener</em>, then drop PDF, DOCX or TXT files, or a whole folder. Fill in the vacancy/req number first if you want to filter on it later.</li>
+  <li><strong>From your ATS (e.g. Oleeo):</strong> open a candidate, click the icon and choose <em>Capture candidate from this page</em>. Attachments are fetched using your own login.</li>
+  <li><strong>Filter:</strong> on name, location, language, skills, years of experience, AI score and vacancy. Click a column header to sort, and a candidate for the details.</li>
+  <li><strong>Export CSV</strong> downloads the filtered list, ready for Excel.</li>
+  <li><strong>Custom skills</strong> are skills you add to the recognition yourself.</li>
 </ul>
 
-<h2>De AI-score</h2>
-<p>De score loopt van 0 tot 100: groen is weinig signalen, oranje een aantal, rood veel. Open een kandidaat om te zien <em>waarom</em>. Signalen zijn bijvoorbeeld typische AI-woorden, vergeten sjabloontekst zoals “[Bedrijfsnaam]”, heel gelijkmatige zinnen, de maker van de PDF en exact dezelfde tekst als bij een andere sollicitant.
-<strong>Het is een indicatie, geen bewijs.</strong> Gebruik de score om te prioriteren, niet om af te wijzen.</p>
+<h2>The AI score</h2>
+<p>The score runs from 0 to 100: green is few signals, orange some, red many. Open a candidate to see <em>why</em>. Typical signals are AI wording, leftover template text such as “[Company Name]”, very uniform sentences, the tool the PDF was made with, and exactly the same text as another applicant.
+<strong>It is an indication, not proof.</strong> Use it to prioritise, never to reject someone on its own.</p>
 
-<h2>Privacy en meldingen</h2>
-<p>Cv's en kandidaatgegevens worden nergens naartoe gestuurd. Gaat er iets mis, dan wordt alleen de foutmelding anoniem naar de ontwikkelaar gestuurd, zonder namen, bestandsnamen of cv-tekst. Zelf iets kwijt? Gebruik de knop <em>Meld probleem</em> in de screener.</p>
+<h2>Privacy and error reports</h2>
+<p>CVs and candidate details are never sent anywhere. If something breaks, only the error message is sent to the developer, anonymously, without names, file names or CV text. Something else to tell us? Use <em>Report a problem</em> in the screener.</p>
 
-<h2>Bijwerken of verwijderen</h2>
-<p>Pak een nieuwe zip uit over de oude map en klik op ↻ bij CV Screener in <code>chrome://extensions</code>. Je cv's blijven dan bewaard. Klik je daar op <em>Verwijderen</em>, dan wis je ook alle opgeslagen cv's.</p>
+<h2>Update or remove</h2>
+<p>Unzip a new version over the old folder and click ↻ on CV Screener in <code>chrome://extensions</code>. Your CVs are kept. Clicking <em>Remove</em> there also deletes every stored CV.</p>
 </main></body></html>

@@ -64,7 +64,7 @@ export function detectLanguage(text) {
     counts[lang] = words.reduce((n, w) => n + set.has(w), 0);
   }
   const [lang, n] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  return n >= 3 ? { nl: 'Nederlands', en: 'Engels', de: 'Duits', fr: 'Frans' }[lang] : '';
+  return n >= 3 ? { nl: 'Dutch', en: 'English', de: 'German', fr: 'French' }[lang] : '';
 }
 
 export function parseSkills(text, extra = []) {
@@ -133,10 +133,10 @@ export function parseYears(text, today = new Date()) {
 export function parseEducation(text) {
   const l = text.toLowerCase();
   if (/\b(phd|ph\.d|doctor(aat)?|promotie)\b/.test(l)) return 'PhD';
-  if (/\b(master|msc|m\.sc|ma|mba|llm|drs\.?|mr\.|ir\.|wo)\b/.test(l)) return 'WO/Master';
-  if (/\b(bachelor|bsc|b\.sc|ba|hbo|bc\.|ing\.)\b/.test(l)) return 'HBO/Bachelor';
-  if (/\b(mbo|niveau [1-4])\b/.test(l)) return 'MBO';
-  if (/\b(havo|vwo|vmbo|atheneum|gymnasium)\b/.test(l)) return 'Middelbare school';
+  if (/\b(master|msc|m\.sc|ma|mba|llm|drs\.?|mr\.|ir\.|wo)\b/.test(l)) return 'Master';
+  if (/\b(bachelor|bsc|b\.sc|ba|hbo|bc\.|ing\.)\b/.test(l)) return 'Bachelor';
+  if (/\b(mbo|niveau [1-4])\b/.test(l)) return 'Vocational (MBO)';
+  if (/\b(havo|vwo|vmbo|atheneum|gymnasium)\b/.test(l)) return 'Secondary';
   return '';
 }
 
