@@ -11,7 +11,7 @@ const cv = xs => {
   return mean ? sd / mean : 1;
 };
 
-export function aiScore(text, { producer = '' } = {}) {
+export function aiScore(text, { producer = '', kind = 'cv' } = {}) {
   const reasons = [];
   let score = 0;
   const add = (pts, why) => { if (pts > 0) { score += pts; reasons.push(`${why} (+${Math.round(pts)})`); } };
@@ -22,7 +22,8 @@ export function aiScore(text, { producer = '' } = {}) {
   const nHits = Object.values(hits).reduce((a, b) => a + b, 0);
   const per100 = nHits / words * 100;
   const top = Object.entries(hits).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([p, n]) => n > 1 ? `${p} ×${n}` : p);
-  add(Math.min(40, Math.max(0, per100 - 0.4) * 22), `Typical AI wording: ${top.join(', ')}`);
+  // A letter is all prose: wording is most of the evidence there is, so it may count for more than in a CV.
+  add(Math.min(kind === 'letter' ? 60 : 40, Math.max(0, per100 - 0.4) * 22), `Typical AI wording: ${top.join(', ')}`);
 
   const dashes = (text.match(/—/g) || []).length;
   add(Math.min(12, dashes / words * 1000 * 1.5), `${dashes} em-dashes (—)`);

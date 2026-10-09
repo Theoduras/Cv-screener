@@ -17,9 +17,11 @@ const FIELDS = {
   edu: r => r.education, education: r => r.education,
   tag: r => r.tag, vacancy: r => r.tag, req: r => r.tag,
   file: r => r.fileName, text: r => r.text,
+  // a letter shown on its own has no CV; otherwise the CV is the row's text and its letters ride along
+  cv: r => r.letterOnly ? '' : r.text, letter: r => r.letterOnly ? r.text : r.letterText,
 };
 const NUMERIC = { years: r => r.years, ai: r => r.aiRes?.score ?? r.baseAi?.score, tool: r => r.tailRes?.score };
-const all = r => [r.text, r.name, r.email, r.location, (r.skills || []).join(' '), (r.languages || []).join(' '),
+const all = r => [r.text, r.letterOnly ? '' : r.letterText, r.name, r.email, r.location, (r.skills || []).join(' '), (r.languages || []).join(' '),
   r.cvLanguage, r.education, r.tag, r.fileName].filter(Boolean).join('\n');
 
 function tokenize(q) {
@@ -160,7 +162,8 @@ function build(node, terms) {
   const fuzzy = get && !phrase && value.trim().endsWith('~') && /^[\p{L}\p{N}]+$/u.test(word);
   const variants = r => fuzzy ? vocab(hay(r) || '').filter(w => similarWord(w, word)) : [];
   const t = fuzzy ? r => rx.test(hay(r) || '') || variants(r).length > 0 : r => rx.test(hay(r) || '');
-  terms.push({ label, test: t, highlight: !field || field === 'text' ? rx : null, variants: !field || field === 'text' ? variants : null });
+  const marks = !field || ['text', 'cv', 'letter'].includes(field);
+  terms.push({ label, test: t, highlight: marks ? rx : null, variants: marks ? variants : null });
   return t;
 }
 
@@ -183,7 +186,7 @@ export function fromWords({ all = [], any = [], groups, none = [] } = {}) {
   ].join(' ');
 }
 
-const FIELD_WORD = { skill: 'skills', loc: 'location', edu: 'education', lang: 'languages', name: 'name', text: 'text' };
+const FIELD_WORD = { skill: 'skills', loc: 'location', edu: 'education', lang: 'languages', name: 'name', text: 'text', cv: 'CV', letter: 'cover letter' };
 // What a term looks like to a person: no quotes, no ~, "skill:python" -> "python (skills)".
 export const plainLabel = l => {
   const m = l.match(/^(not )?([a-z]+):(.*)$/);

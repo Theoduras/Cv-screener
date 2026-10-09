@@ -118,6 +118,24 @@ const [dl] = await Promise.all([app.waitForEvent('download'), app.click('#export
 const csv = readFileSync(await dl.path(), 'utf8');
 ok(csv.split('\r\n').length === 4 && csv.includes('Sanne de Vries'), 'CSV export');
 
+// cover letters: detected, linked to their CV by email, filterable, searchable, shown in the drawer
+await app.setInputFiles('#files', [fx('letter-human.txt'), fx('letter-ai.txt')]);
+await app.waitForFunction(() => document.querySelectorAll('.doc-mark').length === 2, null, { timeout: 15000 });
+ok(await app.$$eval('tbody tr', t => t.length) === 3, 'letters join their CV instead of adding rows');
+await app.selectOption('#fletter', 'has');
+ok(await app.$$eval('tbody tr', t => t.length) === 2, 'filter: has a cover letter');
+await app.selectOption('#fletter', 'missing');
+ok(await app.$$eval('tbody tr', t => t.length) === 1, 'filter: no cover letter');
+await app.selectOption('#fletter', '');
+await app.fill('#in-all', 'collega'); await app.press('#in-all', 'Enter');
+ok(await app.$$eval('tbody tr', t => t.length) === 1 && (await app.textContent('tbody')).includes('Sanne'), 'search reaches the cover letter');
+await app.click('tbody tr:first-child');
+await app.click('.doc-tab[data-doc="1"]');
+ok(await app.$$eval('.doc-pane[data-doc="1"] mark', m => m.length) > 0, 'match highlighted in the letter');
+ok((await app.textContent('.verdicts')).includes('Cover letter'), 'checks shown per document');
+await app.click('#closeDrawer');
+await app.click('#reset');
+
 // capture: run capture.js in the ATS page and hand its result over the way the popup does
 // (the popup itself needs a real click for activeTab, which headless cannot give)
 const atsPage = await ctx.newPage();

@@ -2,7 +2,8 @@ import * as db from './lib/db.js';
 import { extract, fileKind, ExtractError } from './lib/extract.js';
 import { parseCV } from './lib/parse.js';
 import { aiScore, textHash } from './lib/aiscore.js';
-import { tailorScore } from './lib/tailor.js';
+import { tailorScore, shingleSet, overlap } from './lib/tailor.js';
+import { docKind, linkLetters } from './lib/doctype.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
 import { compile, highlight, fromWords, plainLabel, termCode, suggest } from './lib/query.js';
 import { SKILLS } from './lib/dict.js';
@@ -18,28 +19,72 @@ const load = async (k, d) => (await chrome.storage.local.get(k))[k] ?? d;
 
 function analyse(rec) {
   const parsed = parseCV(rec.text, { extraSkills });
-  return { ...rec, ...parsed, hash: textHash(rec.text), baseAi: aiScore(rec.text, { producer: rec.producer }) };
+  const kind = rec.kindManual || docKind(rec.text, rec.fileName);
+  return { ...rec, ...parsed, kind, hash: textHash(rec.text), baseAi: aiScore(rec.text, { producer: rec.producer, kind }) };
 }
 
 // The "sent/tailored by a tool" score depends on the whole set (duplicates, the same person
 // across vacancies) and on the vacancy text, so it is worked out at render time.
 const holder = r => (r.email || r.name || '').toLowerCase().trim();
+// Letters that say nearly the same thing: compare only pairs that share one of each letter's 8
+// "smallest" phrases (a cheap MinHash), so a thousand letters is not half a million comparisons.
+function letterSimilarity(letters, holderOf) {
+  const sets = new Map(letters.map(l => [l.id, shingleSet(l.text)]));
+  const buckets = new Map();
+  for (const l of letters) for (const k of [...sets.get(l.id)].sort().slice(0, 8)) (buckets.get(k) || buckets.set(k, []).get(k)).push(l);
+  const out = Object.fromEntries(letters.map(l => [l.id, { others: new Set(), tags: new Set() }]));
+  const seen = new Set();
+  for (const group of buckets.values()) for (let i = 0; i < group.length; i++) for (let j = i + 1; j < group.length; j++) {
+    const a = group[i], b = group[j], key = a.id < b.id ? a.id + b.id : b.id + a.id;
+    if (seen.has(key)) continue; seen.add(key);
+    if (overlap(sets.get(a.id), sets.get(b.id)) < 0.8) continue;
+    const ha = holderOf(a), hb = holderOf(b);
+    if (ha && ha === hb) {
+      if (a.tag !== b.tag && a.hash !== b.hash) { out[a.id].tags.add(b.tag); out[b.id].tags.add(a.tag); }
+    } else { out[a.id].others.add(b.id); out[b.id].others.add(a.id); }
+  }
+  return out;
+}
+const worse = (a, b) => b && b.score > a.score ? b : a;
+
 function withDupes(list) {
+  const ok = list.filter(r => !r.error);
+  const byId = Object.fromEntries(list.map(r => [r.id, r]));
+  const links = linkLetters(ok);
+  const lettersOf = {};
+  for (const [lid, cid] of Object.entries(links)) (lettersOf[cid] ||= []).push(byId[lid]);
+  const holderOf = d => holder(d) || (links[d.id] ? holder(byId[links[d.id]]) : '');
   const counts = {}, byHolder = {};
-  for (const r of list) {
-    if (r.error) continue;
+  for (const r of ok) {
+    if (r.kind === 'letter') continue;
     if (r.hash) counts[r.hash] = (counts[r.hash] || 0) + 1;
     const h = holder(r);
     if (h) (byHolder[h] ||= []).push(r);
   }
-  return list.map(r => {
-    if (r.error) return { ...r, aiRes: null, tailRes: null };
-    const d = (counts[r.hash] || 1) - 1;
-    // other vacancies this person applied to with a differently worded CV
-    const others = new Set((byHolder[holder(r)] || []).filter(o => o.tag !== r.tag && o.hash !== r.hash).map(o => o.tag));
-    const tailRes = tailorScore(r, { vacancyText: vacancies[r.tag] || '', duplicates: d, sameHolder: others.size });
-    return { ...r, aiRes: r.baseAi, tailRes };
-  });
+  const sim = letterSimilarity(ok.filter(r => r.kind === 'letter'), holderOf);
+  const score = d => {
+    const opts = { vacancyText: vacancies[d.tag] || '', tag: d.tag };
+    if (d.kind === 'letter') Object.assign(opts, { similarLetters: sim[d.id].others.size, sameLetterVacancies: sim[d.id].tags.size });
+    else {
+      // other vacancies this person applied to with a differently worded CV
+      const others = new Set((byHolder[holder(d)] || []).filter(o => o.tag !== d.tag && o.hash !== d.hash).map(o => o.tag));
+      Object.assign(opts, { duplicates: (counts[d.hash] || 1) - 1, sameHolder: others.size });
+    }
+    return { ...d, aiRes: d.baseAi, tailRes: tailorScore(d, opts) };
+  };
+  const out = [];
+  for (const r of list) {
+    if (r.error) { out.push({ ...r, aiRes: null, tailRes: null, letters: [] }); continue; }
+    if (r.kind === 'letter' && links[r.id]) continue; // shown with its CV
+    const doc = score(r);
+    if (r.kind === 'letter') { out.push({ ...doc, letterOnly: true, letters: [], letterText: r.text }); continue; }
+    const letters = (lettersOf[r.id] || []).map(score);
+    // the table shows the worse of CV and letter, and says which one it was
+    const ai = letters.reduce((m, l) => worse(m, { ...l.aiRes, from: 'cover letter' }), { ...doc.aiRes, from: 'CV' });
+    const tool = letters.reduce((m, l) => worse(m, { ...l.tailRes, from: 'cover letter' }), { ...doc.tailRes, from: 'CV' });
+    out.push({ ...doc, letters, letterText: letters.map(l => l.text).join('\n\n'), cvAi: doc.aiRes, cvTool: doc.tailRes, aiRes: ai, tailRes: tool });
+  }
+  return out;
 }
 
 async function addFromBytes(buf, name, mime, extra) {
@@ -77,7 +122,7 @@ async function drainInbox() {
   await store('inbox', []);
   const out = [];
   for (const cap of inbox) {
-    const extra = { source: 'ATS page', tag: cap.title, pageUrl: cap.url };
+    const extra = { source: 'ATS page', tag: cap.title, pageUrl: cap.url, captureId: `${cap.at}|${cap.url}` };
     for (const f of cap.files) {
       const bin = Uint8Array.from(atob(f.b64), c => c.charCodeAt(0));
       out.push(await addFromBytes(bin.buffer, f.name, f.type, extra));
@@ -96,7 +141,7 @@ async function drainInbox() {
 const F = () => ({
   loc: $('#floc').value.trim().toLowerCase(), lang: $('#flang').value,
   min: $('#fmin').value === '' ? null : +$('#fmin').value, max: $('#fmax').value === '' ? null : +$('#fmax').value,
-  ai: $('#fai').value, tag: $('#ftag').value,
+  ai: $('#fai').value, tag: $('#ftag').value, letter: $('#fletter').value,
 });
 
 function filtered() {
@@ -116,6 +161,9 @@ function filtered() {
       if (f.ai === 'human' && (r.aiRes.level !== 'low' || r.tailRes.level !== 'low')) return false;
     }
     if (f.tag && r.tag !== f.tag) return false;
+    const hasLetter = r.letterOnly || r.letters?.length > 0;
+    if (f.letter === 'has' && !hasLetter) return false;
+    if (f.letter === 'missing' && hasLetter) return false;
     return true;
   }).sort((a, b) => {
     const v = r => sortKey === 'ai' ? r.aiRes?.score ?? -1 : sortKey === 'tool' ? r.tailRes?.score ?? -1 : Array.isArray(r[sortKey]) ? r[sortKey].length : r[sortKey] ?? '';
@@ -138,15 +186,15 @@ function render() {
   $('#tbl tbody').innerHTML = list.map(r => r.error ? `
     <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
     <tr data-id="${r.id}">
-      <td>${esc(r.name || '(unknown)')}<div class="note">${esc(r.email)}</div></td>
+      <td>${esc(r.name || '(unknown)')}${r.letters.length ? ' <span class="doc-mark" title="Has a cover letter">📝</span>' : ''}${r.letterOnly ? ' <span class="doc-only">cover letter only</span>' : ''}<div class="note">${esc(r.email)}</div></td>
       ${matchedCell(r)}
       <td>${esc(r.location)}</td>
       <td>${esc((r.languages.length ? r.languages : [r.cvLanguage]).filter(Boolean).join(', '))}</td>
       <td>${r.years || ''}</td>
       <td class="skills">${esc(r.skills.slice(0, 12).join(', '))}${r.skills.length > 12 ? ' …' : ''}</td>
       <td>${esc(r.education)}</td>
-      <td><span class="ai ${r.aiRes.level}" title="Written by AI?\n${esc(r.aiRes.reasons.join('\n') || 'No signals')}">${r.aiRes.score}</span></td>
-      <td><span class="ai ${r.tailRes.level}" title="Sent or tailored by a tool?\n${esc(r.tailRes.reasons.join('\n') || 'No signals')}">${r.tailRes.score}</span></td>
+      <td><span class="ai ${r.aiRes.level}" title="Written by AI?${r.letters.length ? ` (worst: ${r.aiRes.from})` : ''}\n${esc(r.aiRes.reasons.join('\n') || 'No signals')}">${r.aiRes.score}</span></td>
+      <td><span class="ai ${r.tailRes.level}" title="Sent or tailored by a tool?${r.letters.length ? ` (worst: ${r.tailRes.from})` : ''}\n${esc(r.tailRes.reasons.join('\n') || 'No signals')}">${r.tailRes.score}</span></td>
       <td>${esc(r.tag)}</td>
       <td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td>
     </tr>`).join('');
@@ -169,37 +217,60 @@ async function refresh() {
   render();
 }
 
+// The two checks, per document when there is a CV and a letter.
+function verdicts(docs) {
+  const block = (title, pick) => `<section><h3>${title} ${docs.map(d => `<span class="ai ${pick(d.doc).level}" title="${d.label}">${docs.length > 1 ? d.label + ' ' : ''}${pick(d.doc).score}</span>`).join(' ')}</h3>
+    ${docs.map(d => `${docs.length > 1 ? `<h4>${d.label}</h4>` : ''}<ul>${pick(d.doc).reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>`).join('')}</section>`;
+  const tag = docs[0].doc.tag;
+  return `<div class="verdicts">${block('🤖 Written by AI?', d => d.aiRes)}${block('📨 Sent or tailored by a tool?', d => d.tailRes)}
+    ${vacancies[tag] ? '' : `<p class="note">Tip: add the vacancy text for “${esc(tag || 'this vacancy')}” (📄 Vacancy text, at the top) to also check whether the CV or letter copies the job ad, or names another job.</p>`}</div>`;
+}
+
 function openDrawer(id) {
   const r = rows.find(x => x.id === id);
   if (!r) return;
+  // a letter shown on its own carries its own scores; a CV row carries the worse of CV and letter, so use the CV's own
+  const docs = r.error ? [] : r.letterOnly ? [{ label: 'Cover letter', kind: 'letter', doc: r }]
+    : [{ label: 'CV', kind: 'cv', doc: { ...r, aiRes: r.cvAi, tailRes: r.cvTool } },
+       ...r.letters.map((l, i) => ({ label: r.letters.length > 1 ? `Cover letter ${i + 1}` : 'Cover letter', kind: 'letter', doc: l }))];
   const dl = [['Name', r.name], ['Email', r.email], ['Phone', r.phone], ['LinkedIn', r.linkedin], ['Location', r.location],
     ['Languages', (r.languages || []).join(', ')], ['CV written in', r.cvLanguage], ['Years of experience', r.years], ['Education', r.education],
     ['Skills', (r.skills || []).join(', ')], ['Vacancy', r.tag], ['Source', `${r.source || ''} – ${r.fileName || ''}`], ['PDF made with', r.producer]];
   $('#drawerBody').innerHTML = `
     <h2>${esc(r.name || r.fileName)}</h2>
     ${r.error ? `<p>⚠ ${esc(r.error)}</p>` : `
-    <div class="verdicts">
-      <section><h3>🤖 Written by AI? <span class="ai ${r.aiRes.level}">${r.aiRes.score}</span></h3>
-        <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul></section>
-      <section><h3>📨 Sent or tailored by a tool? <span class="ai ${r.tailRes.level}">${r.tailRes.score}</span></h3>
-        <ul>${r.tailRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>
-        ${vacancies[r.tag] ? '' : `<p class="note">Tip: add the vacancy text for “${esc(r.tag || 'this vacancy')}” (📄 Vacancy text, at the top) to also check whether this CV copies the job ad.</p>`}</section>
-    </div>
-    <p class="note">Both are indications, not proof. Use them to prioritise, never to reject on their own – a candidate may tailor their own CV to your vacancy, which is a good thing.</p>
+    ${verdicts(docs)}
+    <p class="note">These are indications, not proof. Use them to prioritise, never to reject on their own – a candidate may tailor their own CV or letter to your vacancy, which is a good thing.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).map(plainLabel).join(', ') || 'none')}</p>` : ''}
-    <h3>Text</h3><pre>${highlight(esc(r.text), query.terms, r)}</pre>`}
-    <button class="danger" id="delOne">Delete this candidate</button>`;
-  $('#delOne').onclick = async () => { await db.remove(id); $('#drawer').hidden = true; refresh(); };
+    <div class="doc-tabs" role="tablist">${docs.map((d, i) => `<button type="button" role="tab" class="doc-tab${i === 0 ? ' on' : ''}" data-doc="${i}">${d.label}</button>`).join('')}</div>
+    ${docs.map((d, i) => `<div class="doc-pane" data-doc="${i}"${i ? ' hidden' : ''}>
+      <p class="note">${esc(d.doc.fileName || '')} · <button type="button" class="link small kind-flip" data-id="${d.doc.id}" data-kind="${d.kind === 'letter' ? 'cv' : 'letter'}">${d.kind === 'letter' ? 'This is a CV, not a cover letter' : 'This is a cover letter, not a CV'}</button></p>
+      <pre>${highlight(esc(d.doc.text), query.terms, { ...r, text: d.doc.text, letterText: '' })}</pre></div>`).join('')}`}
+    <button class="danger" id="delOne">Delete this candidate${r.letters?.length ? ' and their cover letter' : ''}</button>`;
+  $('#delOne').onclick = async () => { for (const d of [r, ...(r.letters || [])]) await db.remove(d.id); $('#drawer').hidden = true; refresh(); };
+  $('#drawerBody').querySelectorAll('.doc-tab').forEach(t => t.onclick = () => {
+    $('#drawerBody').querySelectorAll('.doc-tab').forEach(x => x.classList.toggle('on', x === t));
+    $('#drawerBody').querySelectorAll('.doc-pane').forEach(p => { p.hidden = p.dataset.doc !== t.dataset.doc; });
+  });
+  $('#drawerBody').querySelectorAll('.kind-flip').forEach(b => b.onclick = async () => {
+    const rec = (await db.all()).find(x => x.id === b.dataset.id);
+    if (!rec) return;
+    await db.put({ ...rec, kind: b.dataset.kind, kindManual: b.dataset.kind });
+    $('#drawer').hidden = true;
+    await refresh();
+  });
   $('#drawer').hidden = false;
 }
 
 function exportCsv() {
-  const cols = ['name', 'email', 'phone', 'linkedin', 'location', 'languages', 'cvLanguage', 'years', 'education', 'skills', 'ai', 'aiReasons', 'tool', 'toolReasons', 'tag', 'fileName', 'addedAt'];
+  const cols = ['name', 'email', 'phone', 'linkedin', 'location', 'languages', 'cvLanguage', 'years', 'education', 'skills', 'ai', 'aiReasons', 'tool', 'toolReasons', 'has_cover_letter', 'letter_ai', 'letter_tool', 'tag', 'fileName', 'addedAt'];
   const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = filtered().map(r => cols.map(c => cell(
     c === 'ai' ? r.aiRes?.score : c === 'aiReasons' ? r.aiRes?.reasons.join(' | ') :
     c === 'tool' ? r.tailRes?.score : c === 'toolReasons' ? r.tailRes?.reasons.join(' | ') :
+    c === 'has_cover_letter' ? (r.letterOnly || r.letters?.length ? 'yes' : 'no') :
+    c === 'letter_ai' ? (r.letterOnly ? r.aiRes?.score : r.letters?.[0]?.aiRes.score) : c === 'letter_tool' ? (r.letterOnly ? r.tailRes?.score : r.letters?.[0]?.tailRes.score) :
     c === 'addedAt' ? new Date(r.addedAt).toISOString() : Array.isArray(r[c]) ? r[c].join(', ') : r[c])).join(','));
   const blob = new Blob(['﻿' + [cols.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `cv-screener-${new Date().toISOString().slice(0, 10)}.csv` });
@@ -245,7 +316,7 @@ const emptyWords = () => ({ all: [], groups: [[]], none: [] });
 const KIND_NAME = { all: 'Must have', none: 'Leave out' };
 const kindName = k => KIND_NAME[k] || 'At least one of';
 const MODE_TAG = { exact: 'exact', starts: 'starts with' };
-const FIELD_TAG = { skill: 'in skills', loc: 'in location', edu: 'in education', lang: 'in languages', name: 'in name' };
+const FIELD_TAG = { skill: 'in skills', loc: 'in location', edu: 'in education', lang: 'in languages', name: 'in name', cv: 'in CV', letter: 'in cover letter' };
 const list = kind => kind.startsWith('g:') ? words.groups[+kind.slice(2)] : words[kind];
 function normalise(w) {
   // saved searches from 0.3 stored plain strings and a single `any` list
@@ -277,6 +348,7 @@ function summary() {
   extra.push({ hideAi: 'hiding likely AI-written CVs', hideTool: 'hiding CVs likely sent or tailored by a tool',
     hideBoth: 'hiding likely AI-written and tool-sent CVs', human: 'only CVs with no AI or tool signals' }[$('#fai').value] || '');
   if ($('#ftag').value) extra.push(`for ${$('#ftag').value}`);
+  if ($('#fletter').value) extra.push($('#fletter').value === 'has' ? 'with a cover letter' : 'without a cover letter');
   extra.splice(0, extra.length, ...extra.filter(Boolean));
   if (!s && !extra.length) return '';
   return (s || 'All candidates') + (extra.length ? ' · ' + extra.join(' · ') : '') + '.';

@@ -18,6 +18,8 @@ You have experience with stakeholder management in a fast-growing organisation a
 working with an applicant tracking system such as Oleeo. You build strong relationships with hiring managers
 and you know how to attract passive candidates through LinkedIn and events.`;
 const extra = {
+  'emma-jansen-cover-letter.txt': `Emma Jansen\nemma.jansen@example.com\n\nDear Hiring Manager,\n\nI am writing to express my interest in the position of Sales Manager at Philips. With a proven track record in fast-paced environments, I am confident that my skills make me an ideal fit for your dynamic team.\n\nThroughout my career I have leveraged my passion for people to drive impactful outcomes. I thrive in collaborative settings and I am eager to contribute to your mission and make a meaningful impact.\n\nI look forward to the opportunity to discuss how I can be a valuable asset to your team.\n\nSincerely,\nEmma Jansen`,
+  'sophie-motivation.txt': `Sophie de Vries\nsophie.devries@example.com\n\nUtrecht, 3 October 2026\n\nDear Mr Bakker,\n\nA former colleague told me you are looking for a recruiter for the technical department. I have been recruiting site managers and planners for seven years now, and honestly the hard-to-fill roles are the ones I enjoy most.\n\nWhat appeals to me is that you do most hiring yourselves instead of through agencies. I set that up at Jansen Construction too, with mixed results at first, and I learned a lot from it. I would be happy to tell you more over a coffee.\n\nKind regards,\nSophie de Vries`,
   'mark-de-boer_ATS-optimized.txt': `Mark de Boer\nEindhoven\nmark.deboer@example.com\n\nProfile\nRecruiter responsible for the full recruitment cycle for technical vacancies. I have experience with stakeholder management in a fast-growing organisation and I am comfortable working with an applicant tracking system such as Oleeo. I build strong relationships with hiring managers and know how to attract passive candidates through LinkedIn and events.\n\nWork experience\n2020 - present Recruiter, Brainport Talent, Eindhoven\n2017 - 2020 Sourcer, Philips, Eindhoven\n\nLanguages\nDutch native, English fluent`,
   'fatima-el-amrani.txt': `Fatima El Amrani\nRotterdam\nfatima.elamrani@example.com | +31 6 23456789\n\nWork experience\n2021 - present Data analyst, Port of Rotterdam\nPower BI dashboards, SQL on shipping data, some Python.\n2018 - 2021 Junior controller, Eneco\nMonth-end close, budgeting, lots of Excel.\n\nEducation\n2014 - 2018 BSc Business Economics, Erasmus University\n\nLanguages\nDutch native, English fluent, Arabic good`,
   'pieter-bakker.txt': `Pieter Bakker\nLocation: Groningen\npieter@example.com\n\nWork experience\nMarch 2012 - present Work planner, building services, Kuipers BV\nAutoCAD, Revit, BIM models, procurement of materials.\n2008 - 2012 Electrician, Feenstra\n\nEducation\nMBO Electrical engineering, level 4\n\nLanguages: Dutch, German (basic)`,
@@ -49,7 +51,7 @@ await app.route('**/api/report', r => r.fulfill({ status: 200, body: '{}' }));
 await app.goto(`chrome-extension://${id}/app.html`);
 await app.fill('#tagInput', 'REQ-1042 Recruiter');
 await app.setInputFiles('#files', [pdfPath, path.join(tmp, 'sophie-de-vries.docx'), ...Object.keys(extra).map(f => path.join(tmp, f))]);
-await app.waitForFunction(() => document.querySelectorAll('tbody tr').length === 6, null, { timeout: 30000 });
+await app.waitForFunction(() => document.querySelectorAll('.doc-mark').length === 2 && document.querySelectorAll('tbody tr').length === 6, null, { timeout: 30000 });
 await app.click('th[data-k="ai"]');
 await app.screenshot({ path: out('1-overview.png') });
 
@@ -65,6 +67,19 @@ await app.screenshot({ path: out('1-overview.png') });
 await app.click('tbody tr:first-child');
 await app.screenshot({ path: out('12-ai-and-tool.png') });
 await app.click('#closeDrawer');
+// cover letter: Emma's letter is AI-written and names another job
+await app.click('th[data-k="ai"]');
+const emma = await app.$$eval('tbody tr', trs => trs.findIndex(t => t.innerText.includes('Emma')));
+await app.click(`tbody tr:nth-child(${emma + 1})`);
+await app.$eval('#drawer', el => { el.scrollTop = 0; });
+await app.screenshot({ path: out('14-cover-letter.png') });
+await app.click('.doc-tab[data-doc="1"]');
+await app.screenshot({ path: out('16-cover-letter-text.png') });
+await app.click('#closeDrawer');
+await app.selectOption('#fletter', 'has');
+await app.evaluate(() => scrollTo(0, 0));
+await app.screenshot({ path: out('15-has-cover-letter.png'), fullPage: true });
+await app.selectOption('#fletter', '');
 // typo search + did you mean
 await app.fill('#in-all', 'managment'); await app.press('#in-all', 'Enter');
 await app.fill('#in-all', 'pyhn'); await app.press('#in-all', 'Enter');

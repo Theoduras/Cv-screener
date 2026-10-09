@@ -63,6 +63,18 @@ In **🤖 AI & tools** you can hide likely AI-written CVs, likely tool-sent CVs,
 
 **These are indications, not proof.** A candidate may tailor their own CV to your vacancy, which is a good thing, and a human can write in a polished style. Use the scores to decide what to read first, never to reject someone on their own.
 
+**Cover letters**
+
+Drop cover letters together with the CVs. You don't need to sort them first.
+- Each file is recognised as a CV or a cover letter, from things like "Dear…"/"Geachte…", "Kind regards"/"Met vriendelijke groet", a file name like *motivation* or *cover letter*, and prose instead of dates and bullets.
+- A letter is attached to its CV automatically: by email address, then name, then the same ATS page, then a matching file name (*jan-jansen-cv.pdf* and *jan-jansen-motivation.pdf*). A 📝 next to the name means the candidate has one. A letter that can't be matched gets its own row, marked "cover letter only".
+- Open the candidate and switch between **CV** and **Cover letter**. Was a file recognised wrongly? Click *This is a cover letter* / *This is a CV* above the text.
+- Search covers both. Click a word and choose **Only in the CV** or **Only in the cover letter** to narrow it down. The **📝 Cover letter** dropdown shows only candidates with or without one.
+- Both checks run on the letter too, shown per document:
+  - 🤖 **AI** looks at the wording, which is most of the evidence in prose.
+  - 📨 **Tool** looks for the same letter sent to several of your vacancies with only the names changed, nearly the same letter as other applicants (a template or a tool), sentences copied from the vacancy, and a letter addressed to a job or company your vacancy never mentions (needs the 📄 Vacancy text).
+- The table shows the higher score of the CV and the letter, and hovering tells you which document it came from.
+
 ## 3. Privacy
 
 - CVs and candidate details are never sent anywhere. They exist only in this browser.

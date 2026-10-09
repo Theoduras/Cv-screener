@@ -37,7 +37,47 @@ export function vacancyOverlap(cvText, vacancyText) {
   return { count, example: cv.slice(best[0], best[1]).join(' ').slice(0, 90) };
 }
 
-export function tailorScore(rec, { vacancyText = '', duplicates = 0, sameHolder = 0 } = {}) {
+// Phrase sets, built once per letter when many letters are compared with each other.
+export const shingleSet = text => new Set(shingles(tokens(text)).keys());
+export function overlap(A, B) {
+  if (!A.size || !B.size) return 0;
+  const [small, big] = A.size < B.size ? [A, B] : [B, A];
+  let n = 0; for (const k of small) if (big.has(k)) n++;
+  return n / small.size;
+}
+// Share of 4-word phrases two texts have in common (0..1), for "nearly the same letter".
+export function similarity(a, b) {
+  const A = new Set(shingles(tokens(a)).keys()), B = new Set(shingles(tokens(b)).keys());
+  if (!A.size || !B.size) return 0;
+  let n = 0; for (const k of A) if (B.has(k)) n++;
+  return n / Math.min(A.size, B.size);
+}
+
+// Role or organisation a letter is addressed to that the vacancy never mentions: the tell of a letter
+// written for another job and sent here unchanged.
+const ROLE_RE = [
+  /\bthe ([A-Z][\w&-]*(?: [A-Z][\w&-]*){0,3}) (?:position|role|vacancy|job)\b/g,
+  /\b(?:position|role|vacancy|job|opening) (?:of|as) (?:an? |the )?([A-Z][\w&-]*(?: [A-Z][\w&-]*){0,3})/g,
+  /\b(?:position|role|vacancy) at ([A-Z][\w&-]*(?: [A-Z][\w&-]*){0,3})/g,
+  /\bjoin (?:the team at )?([A-Z][\w&-]*(?: [A-Z][\w&-]*){0,2})/g,
+  /\b(?:functie|vacature) (?:van|als|voor) (?:een )?([a-zA-Z][\w-]*(?: [a-zA-Z][\w-]*){0,2}?)(?= bij|[.,]|$)/gm,
+  /\bbij ([A-Z][\w&-]*(?: [A-Z][\w&-]*){0,2})/g,
+];
+const IGNORE = /^(your|the|our|this|team|company|organisation|organization|jullie|uw|u|haar|hem)$/i;
+export function wrongAddressee(letterText, vacancyText, tag = '') {
+  if (!vacancyText?.trim()) return '';
+  const hay = (vacancyText + ' ' + tag).toLowerCase();
+  for (const re of ROLE_RE) {
+    for (const m of letterText.matchAll(re)) {
+      const name = m[1].trim();
+      if (name.length < 3 || IGNORE.test(name) || /\[|company name/i.test(name)) continue;
+      if (!hay.includes(name.toLowerCase())) return name;
+    }
+  }
+  return '';
+}
+
+export function tailorScore(rec, { vacancyText = '', duplicates = 0, sameHolder = 0, similarLetters = 0, sameLetterVacancies = 0, tag = '' } = {}) {
   const reasons = [];
   let score = 0;
   const add = (pts, why) => { if (pts > 0) { score += pts; reasons.push(`${why} (+${Math.round(pts)})`); } };
@@ -63,6 +103,13 @@ export function tailorScore(rec, { vacancyText = '', duplicates = 0, sameHolder 
 
   const kw = text.split('\n').find(l => /^\s*(keywords|key words|kernwoorden|trefwoorden|core competencies)\s*[:\-]/i.test(l) && l.split(/[,;|•]/).length >= 20);
   if (kw) add(20, `A long keyword list (${kw.split(/[,;|•]/).length} items) – typical of CVs stuffed to pass ATS filters`);
+
+  if (rec.kind === 'letter') {
+    if (sameLetterVacancies > 0) add(Math.min(45, 30 + 8 * (sameLetterVacancies - 1)), `Sent nearly the same letter to ${sameLetterVacancies + 1} vacancies – only the names changed`);
+    if (similarLetters > 0) add(Math.min(40, 25 + 5 * similarLetters), `Nearly the same letter as ${similarLetters} other applicant(s) – a shared template or a tool`);
+    const other = wrongAddressee(text, vacancyText, tag);
+    if (other) add(30, `Addressed to "${other}", which this vacancy never mentions – possibly written for another job`);
+  }
 
   score = Math.min(100, Math.round(score));
   return { score, level: score >= 55 ? 'high' : score >= 25 ? 'medium' : 'low', reasons };

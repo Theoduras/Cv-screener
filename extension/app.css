@@ -129,3 +129,12 @@ button.link.small{font-size:13px;padding:4px 0}
 #vacDialog label{display:block;font-size:13px;color:var(--muted)}
 #vacDialog input{width:100%;margin-top:4px}
 #intake .row button.ghost{padding:7px 12px}
+
+/* ---------- cover letters ---------- */
+.doc-mark{font-size:13px}
+.doc-only{font-size:11px;background:#ece7ff;color:#4a33b0;border-radius:6px;padding:1px 6px;white-space:nowrap}
+.doc-tabs{display:flex;gap:6px;margin:14px 0 6px}
+.doc-tab{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 14px}
+.doc-tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.verdicts h3 .ai{font-size:12px;margin-left:4px}
+.verdicts h4{margin:8px 0 0;font-size:13px;color:var(--muted)}

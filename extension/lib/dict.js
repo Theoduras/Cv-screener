@@ -93,6 +93,8 @@ export const LLM_PHRASES = [
   'strong communication skills','excellent communication skills','team player','commitment to excellence',
   'drive impactful','impactful','actionable insights','stakeholder engagement','value-driven','customer-centric',
   'i am excited to','i am confident that','eager to contribute','make a meaningful impact','unwavering',
+  'i am writing to express my interest','i am thrilled to','ideal fit','align perfectly','aligns perfectly','i look forward to the opportunity to discuss','valuable asset to your team',
+  'met veel enthousiasme solliciteer ik','sluit naadloos aan','ideale kandidaat',
   // nl
   'gedreven','resultaatgericht','resultaatgerichte','proactief','proactieve','dynamische omgeving','in een dynamische',
   'passie voor','gepassioneerd','teamspeler','oplossingsgericht','klantgericht','klantgerichte','stressbestendig',

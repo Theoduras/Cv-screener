@@ -17,7 +17,7 @@
 
 <section id="intake">
   <div id="drop">
-    <strong>Drop CVs here</strong> (PDF, DOCX, TXT – or a whole folder)
+    <strong>Drop CVs and cover letters here</strong> (PDF, DOCX, TXT – or a whole folder). Cover letters are recognised and linked to their CV automatically.
     <div class="row">
       <label class="btn">Choose files<input type="file" id="files" multiple accept=".pdf,.docx,.doc,.txt,.html,.htm" hidden></label>
       <label class="btn">Choose folder<input type="file" id="folder" webkitdirectory hidden></label>
@@ -52,6 +52,7 @@
     <label>🗣 Speaks<select id="flang"><option value="">Any language</option></select></label>
     <label>⏳ Experience<select id="fmin"><option value="">Any</option><option value="1">1+ years</option><option value="2">2+ years</option><option value="3">3+ years</option><option value="5">5+ years</option><option value="10">10+ years</option></select></label>
     <label>🤖 AI &amp; tools<select id="fai"><option value="">Show all</option><option value="hideAi">Hide likely AI-written</option><option value="hideTool">Hide likely sent/tailored by a tool</option><option value="hideBoth">Hide both</option><option value="human">Only CVs with no AI or tool signals</option></select></label>
+    <label>📝 Cover letter<select id="fletter"><option value="">Any</option><option value="has">Has a cover letter</option><option value="missing">No cover letter</option></select></label>
     <label>📁 Vacancy<select id="ftag"><option value="">All vacancies</option></select></label>
   </div>
   <div class="finder-actions">
@@ -88,8 +89,8 @@
   </fieldset>
   <fieldset><legend>Where should we look?</legend>
     <select id="te-field">
-      <option value="any">Anywhere in the CV</option><option value="skill">Only in the skills</option><option value="loc">Only in the location</option>
-      <option value="edu">Only in the education level</option><option value="lang">Only in the languages</option><option value="name">Only in the name</option>
+      <option value="any">Anywhere (CV and cover letter)</option><option value="skill">Only in the skills</option><option value="loc">Only in the location</option>
+      <option value="edu">Only in the education level</option><option value="lang">Only in the languages</option><option value="name">Only in the name</option><option value="cv">Only in the CV</option><option value="letter">Only in the cover letter</option>
     </select>
   </fieldset>
   <fieldset><legend>Move to</legend><div class="te-move">
