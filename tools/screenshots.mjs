@@ -47,7 +47,7 @@ await app.waitForFunction(() => document.querySelectorAll('tbody tr').length ===
 await app.click('th[data-k="ai"]');
 await app.screenshot({ path: out('1-overview.png') });
 
-await app.fill('#fai', '40'); await app.selectOption('#flang', 'English');
+await app.selectOption('#fai', '54'); await app.selectOption('#flang', 'English');
 await app.screenshot({ path: out('2-filtered.png') });
 await app.click('#reset');
 
@@ -55,20 +55,23 @@ await app.click('tbody tr:first-child');
 await app.screenshot({ path: out('3-ai-explanation.png') });
 await app.click('#closeDrawer');
 
-// custom search: query + saved searches + help, then the highlighted CV
-for (const [name, q] of [['Data roles 5+ yrs', '(python OR sql OR "power bi") years:>=5 -intern'], ['Recruiters, low AI', 'recruit* ai:<40']]) {
-  await app.fill('#fq', q);
-  app.once('dialog', d => d.accept(name));
-  await app.click('#saveSearch');
-}
-await app.click('.chip-apply');
-await app.click('#qhelpBtn');
-await app.screenshot({ path: out('7-custom-search.png') });
-await app.click('#qhelpBtn');
+// guided search: plain boxes, quick-add, saved searches, then the highlighted CV and the no-results helper
+const type = async (box, words) => { for (const w of words) { await app.fill(box, w); await app.press(box, 'Enter'); } };
+await type('#in-all', ['recruit']); await app.selectOption('#fai', '54');
+app.once('dialog', d => d.accept('Recruiters – no AI CVs')); await app.click('#saveSearch');
+await app.click('#reset');
+await type('#in-all', ['python']); await type('#in-any', ['sql', 'power bi', 'docker']); await type('#in-none', ['intern']);
+await app.selectOption('#fmin', '5');
+app.once('dialog', d => d.accept('Data analysts 5+ yrs')); await app.click('#saveSearch');
+await app.evaluate(() => scrollTo(0, 0));
+await app.screenshot({ path: out('7-custom-search.png'), fullPage: true });
 await app.click('tbody tr:nth-child(2)');
 await app.$eval('#drawer pre', el => el.scrollIntoView({ block: 'center' }));
 await app.screenshot({ path: out('8-search-highlight.png') });
 await app.click('#closeDrawer');
+await type('#in-all', ['astronaut']);
+await app.evaluate(() => scrollTo(0, 0));
+await app.screenshot({ path: out('9-no-results-help.png'), fullPage: true });
 await app.click('#reset');
 
 const pop = await ctx.newPage();

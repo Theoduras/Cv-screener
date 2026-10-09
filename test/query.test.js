@@ -58,3 +58,16 @@ test('matched terms and highlighting', () => {
   const html = highlight('Python &amp; BIG-registratie', c.terms);
   assert.equal(html, '<mark>Python</mark> &amp; <mark>BIG</mark>-registratie');
 });
+
+test('plain boxes: forgiving endings, phrases, OR and leave-out', async () => {
+  const { fromWords } = await import('../extension/lib/query.js');
+  const q = w => [ann, bob].filter(compile(fromWords(w)).test).map(r => r.name.split(' ')[0]);
+  assert.equal(fromWords({ all: ['nurse', "driver's licence"], any: ['sap', 'oracle'], none: ['intern'] }),
+    `nurse~ "driver's licence" (sap~ OR oracle~) -intern~`);
+  assert.deepEqual(q({ all: ['recruit'] }), ['Ann'], 'recruit -> recruiting');
+  assert.deepEqual(q({ all: ['database'] }), ['Bob'], 'database -> databases');
+  assert.deepEqual(q({ all: ['excel'] }), [], 'excel must not match excellent');
+  assert.deepEqual(q({ any: ['python', 'oracle'] }), ['Ann', 'Bob']);
+  assert.deepEqual(q({ any: ['python', 'oracle'], none: ['intern'] }), ['Ann']);
+  assert.deepEqual(q({ all: ["driver's licence"] }), ['Ann']);
+});

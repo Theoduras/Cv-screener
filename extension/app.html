@@ -27,32 +27,56 @@
   </div>
 </section>
 
-<section id="filters">
-  <span class="qwrap"><input id="fq" placeholder='Search: python OR sql -intern "driver&#39;s licence" years:>=5' autocomplete="off"><button id="qhelpBtn" class="ghost icon" type="button" title="Search syntax">?</button></span>
-  <input id="floc" placeholder="Location">
-  <select id="flang"><option value="">Any language</option></select>
-  <input id="fskills" placeholder="Skills, comma-separated">
-  <select id="fmode"><option value="all">all skills</option><option value="any">any of them</option></select>
-  <label>Years <input id="fmin" type="number" min="0" placeholder="min"> – <input id="fmax" type="number" min="0" placeholder="max"></label>
-  <label>AI score ≤ <input id="fai" type="number" min="0" max="100" placeholder="100"></label>
-  <select id="ftag"><option value="">All vacancies</option></select>
-  <button id="saveSearch" class="ghost" type="button">★ Save search</button>
-  <button id="reset" class="ghost">Clear filters</button>
+<section id="finder">
+  <h2 class="finder-title">Find candidates</h2>
+  <p class="finder-sub">Type a word and press <kbd>Enter</kbd>. Add as many as you like – you can use whole phrases too, like <em>driver's licence</em>.</p>
+  <div class="boxes">
+    <div class="box must">
+      <label for="in-all">✅ Must have <span class="why">every one of these</span></label>
+      <div class="chipfield" data-kind="all"><span class="chips"></span><input id="in-all" placeholder="e.g. Excel, nurse, driver's licence" autocomplete="off"></div>
+    </div>
+    <div class="box any">
+      <label for="in-any">➕ Nice to have <span class="why">at least one of these</span></label>
+      <div class="chipfield" data-kind="any"><span class="chips"></span><input id="in-any" placeholder="e.g. SAP, Oracle" autocomplete="off"></div>
+    </div>
+    <div class="box none">
+      <label for="in-none">🚫 Leave out <span class="why">CVs that mention these</span></label>
+      <div class="chipfield" data-kind="none"><span class="chips"></span><input id="in-none" placeholder="e.g. intern, internship" autocomplete="off"></div>
+    </div>
+  </div>
+  <div id="suggest"></div>
+  <div class="selects" id="filters">
+    <label>📍 Where<input id="floc" placeholder="Any city"></label>
+    <label>🗣 Speaks<select id="flang"><option value="">Any language</option></select></label>
+    <label>⏳ Experience<select id="fmin"><option value="">Any</option><option value="1">1+ years</option><option value="2">2+ years</option><option value="3">3+ years</option><option value="5">5+ years</option><option value="10">10+ years</option></select></label>
+    <label>🤖 AI-written CVs<select id="fai"><option value="">Show all</option><option value="54">Hide likely AI (red)</option><option value="24">Only clearly human (green)</option></select></label>
+    <label>📁 Vacancy<select id="ftag"><option value="">All vacancies</option></select></label>
+  </div>
+  <div class="finder-actions">
+    <button id="saveSearch" type="button">★ Save this search</button>
+    <button id="reset" class="ghost" type="button">Start over</button>
+    <button id="advToggle" class="link" type="button">Advanced search ▸</button>
+  </div>
+  <div id="advanced" hidden>
+    <span class="qwrap"><input id="fq" placeholder='Search syntax, e.g. (sap OR oracle) "project manager" -intern' autocomplete="off"><button id="qhelpBtn" class="ghost icon" type="button" title="Search syntax">?</button></span>
+    <label>Max years <input id="fmax" type="number" min="0" placeholder="any"></label>
+    <div id="qhelp" hidden>
+      <strong>Search syntax</strong> – click an example to try it
+      <ul>
+        <li><code>nurse utrecht</code> both words</li>
+        <li><code>"driver's licence"</code> exact phrase</li>
+        <li><code>(sap OR oracle) consultant</code> either, grouped</li>
+        <li><code>recruit* -intern</code> prefix, and exclude a word</li>
+        <li><code>skill:python loc:amsterdam lang:english</code> search one field</li>
+        <li><code>years:>=5 ai:<30 edu:master</code> numbers and education</li>
+      </ul>
+      <span class="note">Fields: name, email, phone, loc, skill, lang, edu, tag, file, text, years, ai.</span>
+    </div>
+  </div>
+  <div id="qhint" class="qhint"></div>
+  <div id="savedWrap"><span class="saved-label">Your saved searches:</span><span id="saved"></span></div>
 </section>
-<div id="qhelp" hidden>
-  <strong>Search syntax</strong> – click an example to try it
-  <ul>
-    <li><code>nurse utrecht</code> both words</li>
-    <li><code>"driver's licence"</code> exact phrase</li>
-    <li><code>(sap OR oracle) consultant</code> either, grouped</li>
-    <li><code>recruit* -intern</code> prefix, and exclude a word</li>
-    <li><code>skill:python loc:amsterdam lang:english</code> search one field</li>
-    <li><code>years:>=5 ai:<30 edu:master</code> numbers and education</li>
-  </ul>
-  <span class="note">Fields: name, email, phone, loc, skill, lang, edu, tag, file, text, years, ai. Words match whole words; Dutch and English both work.</span>
-</div>
-<div id="qhint" class="qhint"></div>
-<div id="saved"></div>
+<div id="resultLine"></div>
 
 <table id="tbl">
   <thead><tr>

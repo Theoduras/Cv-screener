@@ -3,12 +3,12 @@ import { extract, fileKind, ExtractError } from './lib/extract.js';
 import { parseCV } from './lib/parse.js';
 import { aiScore, textHash } from './lib/aiscore.js';
 import { report, installGlobalHandlers, sizeBucket } from './lib/report.js';
-import { compile, highlight } from './lib/query.js';
+import { compile, highlight, fromWords, plainLabel } from './lib/query.js';
 
 installGlobalHandlers();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [];
+let rows = [], extraSkills = [], sortKey = 'addedAt', sortAsc = false, query = compile(''), saved = [], words = { all: [], any: [], none: [] };
 
 const uid = () => crypto.randomUUID();
 const store = (k, v) => chrome.storage.local.set({ [k]: v });
@@ -82,23 +82,17 @@ async function drainInbox() {
 // ---------- filtering / rendering ----------
 const F = () => ({
   loc: $('#floc').value.trim().toLowerCase(), lang: $('#flang').value,
-  skills: $('#fskills').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean), mode: $('#fmode').value,
   min: $('#fmin').value === '' ? null : +$('#fmin').value, max: $('#fmax').value === '' ? null : +$('#fmax').value,
   ai: $('#fai').value === '' ? null : +$('#fai').value, tag: $('#ftag').value,
 });
 
 function filtered() {
   const f = F();
-  query = compile($('#fq').value);
+  query = compile(`${fromWords(words)} ${$('#fq').value}`);
   return rows.filter(r => {
     if (query.active && (r.error || !query.test(r))) return false;
     if (f.loc && !(r.location || '').toLowerCase().includes(f.loc)) return false;
     if (f.lang && !(r.languages || []).includes(f.lang) && r.cvLanguage !== f.lang) return false;
-    if (f.skills.length) {
-      const have = (r.skills || []).map(s => s.toLowerCase()), text = (r.text || '').toLowerCase();
-      const hit = s => have.includes(s) || text.includes(s);
-      if (f.mode === 'all' ? !f.skills.every(hit) : !f.skills.some(hit)) return false;
-    }
     if (f.min !== null && !(r.years >= f.min)) return false;
     if (f.max !== null && !(r.years <= f.max)) return false;
     if (f.ai !== null && r.aiRes && r.aiRes.score > f.ai) return false;
@@ -114,11 +108,13 @@ function filtered() {
 function render() {
   const list = filtered();
   $('#count').textContent = `${list.length} of ${rows.length} CVs`;
+  renderWords();
+  renderResultLine(list);
   const q = query.active;
   $('#qhint').className = query.error ? 'qhint bad' : 'qhint';
-  $('#qhint').textContent = query.error || (q ? `Searching for: ${query.terms.map(t => t.label).join(' · ')}` : '');
+  $('#qhint').textContent = query.error || '';
   $('#matchedTh').hidden = !q;
-  const matchedCell = r => q ? `<td class="matched">${query.matched(r).map(l => `<span class="hit">${esc(l)} ✓</span>`).join(' ')}</td>` : '';
+  const matchedCell = r => q ? `<td class="matched">${query.matched(r).map(l => `<span class="hit">${esc(plainLabel(l))} ✓</span>`).join(' ')}</td>` : '';
   $('#empty').hidden = rows.length > 0;
   $('#tbl tbody').innerHTML = list.map(r => r.error ? `
     <tr class="err" data-id="${r.id}"><td>${esc(r.name || r.fileName)}</td><td colspan="${q ? 6 : 5}">⚠ ${esc(r.error)}</td><td></td><td>${esc(r.tag)}</td><td>${new Date(r.addedAt).toLocaleDateString('en-GB')}</td></tr>` : `
@@ -166,7 +162,7 @@ function openDrawer(id) {
     <ul>${r.aiRes.reasons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No signals found.</li>'}</ul>
     <p class="note">An indication, not proof. Use it to prioritise, not to reject.</p>
     <dl>${dl.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).join(', ') || 'none')}</p>` : ''}
+    ${query.active ? `<p><strong>Matches your search:</strong> ${esc(query.matched(r).map(plainLabel).join(', ') || 'none')}</p>` : ''}
     <h3>Text</h3><pre>${highlight(esc(r.text), query.terms)}</pre>`}
     <button class="danger" id="delOne">Delete this candidate</button>`;
   $('#delOne').onclick = async () => { await db.remove(id); $('#drawer').hidden = true; refresh(); };
@@ -209,7 +205,72 @@ drop.ondrop = async e => { e.preventDefault(); drop.classList.remove('over'); in
 $('#files').onchange = e => { ingest([...e.target.files]); e.target.value = ''; };
 $('#folder').onchange = e => { ingest([...e.target.files]); e.target.value = ''; };
 $('#filters').oninput = render;
-$('#reset').onclick = () => { $('#fq').value = ''; $('#filters').querySelectorAll('input').forEach(i => i.value = ''); $('#filters').querySelectorAll('select').forEach(s => s.selectedIndex = 0); render(); };
+$('#reset').onclick = () => {
+  words = { all: [], any: [], none: [] };
+  document.querySelectorAll('#finder input').forEach(i => i.value = '');
+  document.querySelectorAll('#finder select').forEach(s => s.selectedIndex = 0);
+  render();
+};
+$('#advanced').oninput = render;
+
+// ---------- plain-word boxes ----------
+const KIND_NAME = { all: 'Must have', any: 'Nice to have', none: 'Leave out' };
+function addWords(kind, raw) {
+  const add = raw.split(/[,;]/).map(s => s.trim()).filter(Boolean)
+    .filter(w => !words[kind].some(x => x.toLowerCase() === w.toLowerCase()));
+  if (!add.length) return false;
+  words[kind] = [...words[kind], ...add];
+  render();
+  return true;
+}
+function removeWord(kind, i) { words[kind].splice(i, 1); render(); }
+function renderWords() {
+  document.querySelectorAll('.chipfield').forEach(f => {
+    const kind = f.dataset.kind;
+    f.querySelector('.chips').innerHTML = words[kind].map((w, i) =>
+      `<span class="word ${kind}">${esc(w)}<button type="button" data-kind="${kind}" data-i="${i}" aria-label="Remove ${esc(w)}">×</button></span>`).join('');
+  });
+  // One-click suggestions: the skills most common in the loaded CVs that aren't chosen yet.
+  const chosen = new Set(Object.values(words).flat().map(w => w.toLowerCase()));
+  const counts = {};
+  for (const r of rows) for (const s of r.skills || []) if (!chosen.has(s)) counts[s] = (counts[s] || 0) + 1;
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  $('#suggest').innerHTML = top.length ? '<span class="suggest-label">Quick add:</span>' +
+    top.map(([s, n]) => `<button type="button" class="sugg" data-word="${esc(s)}" title="Found in ${n} CV(s) – click to add to Must have">+ ${esc(s)}</button>`).join('') : '';
+}
+function renderResultLine(list) {
+  const el = $('#resultLine');
+  if (!rows.length) { el.innerHTML = ''; $('#tbl').hidden = false; return; }
+  $('#tbl').hidden = !list.length;
+  if (list.length) { el.innerHTML = `Showing <strong>${list.length}</strong> of ${rows.length} candidates`; el.className = ''; return; }
+  const all = Object.entries(words).flatMap(([k, ws]) => ws.map((w, i) => [k, w, i]));
+  el.className = 'none-found';
+  el.innerHTML = 'No candidates match all of this. ' + (all.length
+    ? 'Try removing a word: ' + all.map(([k, w, i]) => `<button type="button" class="word ${k}" data-kind="${k}" data-i="${i}" title="Remove from ${KIND_NAME[k]}">${esc(w)} ×</button>`).join(' ')
+    : 'Try changing the choices above, or press <strong>Start over</strong>.');
+  if (all.length) el.innerHTML += ' <span class="note">Or loosen Where, Speaks, Experience or AI above.</span>';
+}
+document.querySelectorAll('.chipfield').forEach(f => {
+  const input = f.querySelector('input'), kind = f.dataset.kind;
+  input.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) { e.preventDefault(); addWords(kind, input.value); input.value = ''; }
+    else if (e.key === 'Backspace' && !input.value && words[kind].length) removeWord(kind, words[kind].length - 1);
+  });
+  // Typing a word and clicking elsewhere still counts – people don't always press Enter.
+  input.addEventListener('blur', () => { if (input.value.trim()) { addWords(kind, input.value); input.value = ''; } });
+  f.addEventListener('click', e => { if (e.target === f || e.target.classList.contains('chips')) input.focus(); });
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('button[data-kind][data-i]');
+  if (b) { removeWord(b.dataset.kind, +b.dataset.i); return; }
+  const s = e.target.closest('.sugg');
+  if (s) addWords('all', s.dataset.word);
+});
+$('#advToggle').onclick = () => {
+  const adv = $('#advanced');
+  adv.hidden = !adv.hidden;
+  $('#advToggle').textContent = adv.hidden ? 'Advanced search ▸' : 'Advanced search ▾';
+};
 document.querySelector('thead').onclick = e => {
   const k = e.target.dataset.k; if (!k) return;
   sortAsc = sortKey === k ? !sortAsc : k === 'name' || k === 'location'; sortKey = k; render();
@@ -244,16 +305,22 @@ chrome.runtime.onMessage.addListener((m, _s, reply) => {
 chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.inbox?.newValue?.length) drainInbox(); });
 
 // ---------- saved searches ----------
-const FILTER_IDS = ['fq', 'floc', 'flang', 'fskills', 'fmode', 'fmin', 'fmax', 'fai', 'ftag'];
+const FILTER_IDS = ['fq', 'floc', 'flang', 'fmin', 'fmax', 'fai', 'ftag'];
 function renderSaved() {
+  $('#savedWrap').hidden = !saved.length;
   $('#saved').innerHTML = saved.map((s, i) =>
-    `<span class="chip"><button class="chip-apply" data-i="${i}" title="${esc(s.state.fq || '')}">${esc(s.name)}</button><button class="chip-del" data-i="${i}" aria-label="Delete ${esc(s.name)}">×</button></span>`).join('');
+    `<span class="chip"><button class="chip-apply" data-i="${i}" title="${esc(describe(s))}">${esc(s.name)}</button><button class="chip-del" data-i="${i}" aria-label="Delete ${esc(s.name)}">×</button></span>`).join('');
+}
+function describe(s) {
+  const w = s.words || {};
+  return [w.all?.length && 'Must have: ' + w.all.join(', '), w.any?.length && 'Nice to have: ' + w.any.join(', '),
+    w.none?.length && 'Leave out: ' + w.none.join(', '), s.state.fq].filter(Boolean).join(' · ') || 'Filters only';
 }
 $('#saveSearch').onclick = async () => {
-  const name = prompt('Name this search (e.g. "Senior data – Utrecht")');
+  const name = prompt('Give this search a name, so you can use it again with one click.\n(For example: "Nurses Utrecht")');
   if (!name?.trim()) return;
   const state = Object.fromEntries(FILTER_IDS.map(id => [id, $('#' + id).value]));
-  saved = [...saved.filter(s => s.name !== name.trim()), { name: name.trim(), state }];
+  saved = [...saved.filter(s => s.name !== name.trim()), { name: name.trim(), state, words: structuredClone(words) }];
   await store('savedSearches', saved);
   renderSaved();
 };
@@ -262,6 +329,8 @@ $('#saved').onclick = async e => {
   if (e.target.classList.contains('chip-del')) { saved.splice(i, 1); await store('savedSearches', saved); renderSaved(); return; }
   if (!e.target.classList.contains('chip-apply')) return;
   for (const [id, v] of Object.entries(saved[i].state)) { const el = $('#' + id); if (el) el.value = v; }
+  words = structuredClone(saved[i].words || { all: [], any: [], none: [] });
+  if (saved[i].state.fq || saved[i].state.fmax) { $('#advanced').hidden = false; $('#advToggle').textContent = 'Advanced search ▾'; }
   render();
 };
 $('#qhelpBtn').onclick = () => { $('#qhelp').hidden = !$('#qhelp').hidden; };

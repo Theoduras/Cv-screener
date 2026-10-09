@@ -51,3 +51,43 @@ button.icon{padding:6px 10px}
 td.matched{white-space:nowrap}
 .hit{display:inline-block;background:#e8f6ee;color:var(--low);border-radius:6px;padding:1px 6px;margin:1px 0;font-size:12px}
 mark{background:#ffe58a;border-radius:3px;padding:0 1px}
+
+/* ---------- guided finder (built for people who don't want syntax) ---------- */
+#finder{margin:0 20px 12px;padding:16px 18px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.finder-title{font-size:18px;margin:0 0 2px}
+.finder-sub{margin:0 0 12px;color:var(--muted);font-size:14px}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font:12px system-ui;background:var(--bg)}
+.boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:900px){.boxes{grid-template-columns:1fr}}
+.box label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+.box .why{font-weight:400;color:var(--muted);font-size:13px}
+.chipfield{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:46px;padding:6px 8px;border:2px solid var(--line);border-radius:10px;cursor:text;background:#fff}
+.chipfield:focus-within{border-color:var(--accent)}
+.box.must .chipfield:focus-within{border-color:var(--low)}
+.box.none .chipfield:focus-within{border-color:var(--high)}
+.chipfield .chips{display:contents}
+.chipfield input{border:0;flex:1;min-width:140px;font-size:15px;padding:6px 4px;outline:none}
+.word{display:inline-flex;align-items:center;gap:4px;padding:5px 6px 5px 11px;border-radius:999px;font-size:14px;font-weight:500;border:0;cursor:default}
+button.word{cursor:pointer;padding:5px 11px}
+.word.all{background:#e3f5ea;color:#17683a}.word.any{background:#ece7ff;color:#4a33b0}.word.none{background:#fde7e5;color:#a1271c;text-decoration:line-through}
+.word button{background:transparent;border:0;color:inherit;font-size:17px;line-height:1;padding:0 4px;cursor:pointer;border-radius:50%}
+.word button:hover{background:#0001}
+#suggest{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 4px}
+.suggest-label,.saved-label{color:var(--muted);font-size:13px;margin-right:2px}
+.sugg{background:var(--bg);color:var(--ink);border:1px dashed var(--line);border-radius:999px;padding:4px 10px;font-size:13px}
+.sugg:hover{border-color:var(--low);color:var(--low)}
+#finder .selects{display:flex;flex-wrap:wrap;gap:12px;padding:12px 0 0;margin:8px 0 0;border-top:1px solid var(--line)}
+#finder .selects label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+#finder .selects input,#finder .selects select{font-size:15px;padding:8px 10px;min-width:170px;color:var(--ink)}
+.finder-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.finder-actions button{font-size:15px;padding:9px 16px}
+button.link{background:transparent;color:var(--muted);padding:9px 4px;text-decoration:underline}
+#advanced{margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#advanced #qhelp{flex-basis:100%;margin:0}
+#advanced label{font-size:13px;color:var(--muted)}
+#advanced input[type=number]{width:70px}
+#savedWrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px}
+#saved{display:contents}
+#resultLine{margin:0 20px 10px;font-size:16px}
+#resultLine.none-found{padding:12px 14px;background:#fff7e6;border:1px solid #f2d39b;border-radius:10px;line-height:2}
+[hidden]{display:none!important}

@@ -69,8 +69,11 @@ function parse(tokens) {
 function termRegex(value, phrase) {
   const v = value.trim();
   const prefix = !phrase && v.endsWith('*');
-  const body = esc(prefix ? v.slice(0, -1) : v).replace(/\\\*/g, '[\\p{L}\\p{N}]*').replace(/\s+/g, '\\s+');
-  return new RegExp(`(?<![\\p{L}\\p{N}])${body}${prefix ? '[\\p{L}\\p{N}]*' : '(?![\\p{L}\\p{N}])'}`, 'iu');
+  // word~ = the word plus common endings (nurse -> nurses, recruit -> recruiter), used by the plain-word boxes
+  const loose = !phrase && v.endsWith('~');
+  const body = esc(prefix || loose ? v.slice(0, -1) : v).replace(/\\\*/g, '[\\p{L}\\p{N}]*').replace(/\s+/g, '\\s+');
+  const tail = prefix ? '[\\p{L}\\p{N}]*' : loose ? '(?:s|es|en|er|ers|ing|ed|ment|ments)?(?![\\p{L}\\p{N}])' : '(?![\\p{L}\\p{N}])';
+  return new RegExp(`(?<![\\p{L}\\p{N}])${body}${tail}`, 'iu');
 }
 
 function build(node, terms) {
@@ -101,6 +104,19 @@ function build(node, terms) {
   terms.push({ label, test: t, highlight: !field || field === 'text' ? rx : null });
   return t;
 }
+
+// The three plain boxes ("must have", "nice to have", "leave out") as a query string.
+export function fromWords({ all = [], any = [], none = [] } = {}) {
+  const piece = w => /^[\p{L}\p{N}]+$/u.test(w) ? `${w}~` : `"${w.replace(/"/g, '')}"`;
+  return [
+    ...all.map(piece),
+    any.length ? `(${any.map(piece).join(' OR ')})` : '',
+    ...none.map(w => `-${piece(w)}`),
+  ].filter(Boolean).join(' ');
+}
+
+// What a term looks like to a person: no quotes, no ~.
+export const plainLabel = l => l.replace(/["~]/g, '');
 
 export function compile(q) {
   const query = (q || '').trim();

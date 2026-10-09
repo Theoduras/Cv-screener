@@ -5,7 +5,7 @@ Chrome extension for screening large volumes of CVs on top of any ATS (Oleeo and
 - **Parses** PDF, DOCX and TXT into name, contact details, location, languages, skills, years of experience and education level.
 - **Flags likely AI-written CVs** with a 0–100 score and the reasons behind it. The score is an indicator, not proof.
 - **Filters and sorts** on every one of those fields, and exports the filtered list to CSV.
-- **Custom search** with phrases, OR/NOT, wildcards and field queries (`skill:python years:>=5 -intern`), saved searches, and highlighted matches.
+- **Guided search** for non-technical users (Must have / Nice to have / Leave out boxes, quick-add skills, plain dropdowns, a helpful no-results message) plus an advanced syntax (`skill:python years:>=5 -intern`), saved searches and highlighted matches.
 - **Captures** a candidate straight from the open ATS page, using the recruiter's own session.
 - **Runs locally.** CVs never leave the browser, and there is no API key or cost. Only anonymous error reports are sent; they become GitHub issues in this repo.
 
@@ -15,7 +15,7 @@ Chrome extension for screening large volumes of CVs on top of any ATS (Oleeo and
 |---|---|
 | ![AI explanation](docs/screenshots/3-ai-explanation.png) | ![Popup](docs/screenshots/4-popup.png) |
 
-More: [custom search](docs/screenshots/7-custom-search.png) · [highlighted matches](docs/screenshots/8-search-highlight.png) · [filtered](docs/screenshots/2-filtered.png) · [download page](docs/screenshots/5-download-page.png) · [on a phone](docs/screenshots/6-download-page-mobile.png). Regenerate with `node tools/screenshots.mjs`.
+More: [guided search](docs/screenshots/7-custom-search.png) · [no results helper](docs/screenshots/9-no-results-help.png) · [highlighted matches](docs/screenshots/8-search-highlight.png) · [filtered](docs/screenshots/2-filtered.png) · [download page](docs/screenshots/5-download-page.png) · [on a phone](docs/screenshots/6-download-page-mobile.png). Regenerate with `node tools/screenshots.mjs`.
 
 | For | Read |
 |---|---|

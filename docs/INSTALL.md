@@ -27,21 +27,25 @@ CV Screener is a Chrome extension that reads, sorts and filters large piles of C
 - **Export CSV** downloads the filtered list. It opens straight in Excel.
 - Under **Custom skills** you can add skills that aren't recognised yet.
 
-**Search for your own terms**
+**Find the right candidates**
 
-Type in the search box. Click **?** next to it for examples you can click.
+Under **Find candidates** there are three boxes. Type a word and press **Enter** (or just click somewhere else):
 
-| Type | Finds |
-|---|---|
-| `nurse utrecht` | CVs containing both words |
-| `"driver's licence"` | that exact phrase |
-| `(sap OR oracle) consultant` | either word, plus "consultant" |
-| `recruit* -intern` | recruiter / recruitment…, but not "intern" |
-| `skill:python loc:amsterdam lang:english` | only in that field |
-| `years:>=5 ai:<30 edu:master` | numbers and education level |
+- ✅ **Must have:** every CV shown contains *all* of these. Example: `Excel`, `driver's licence`.
+- ➕ **Nice to have:** a CV needs *at least one* of these. Example: `SAP`, `Oracle`.
+- 🚫 **Leave out:** hides CVs that mention these. Example: `intern`.
 
-Fields: `name`, `email`, `phone`, `loc`, `skill`, `lang`, `edu`, `tag`, `file`, `text`, `years`, `ai`. Dutch terms work too (`rijbewijs`, `"BIG-registratie"`).
-A **Matched** column shows which terms each CV hit, and the matching words are highlighted in the CV text. Use **★ Save search** to keep a search (with all its filters) as a one-click chip.
+Some tips:
+- Whole phrases work, so you can type `driver's licence` without quotes.
+- Small differences in a word are found too, so `nurse` also finds *nurses*.
+- Click **+ a skill** under **Quick add** to use the skills that appear most in your CVs.
+- Click **×** on a word to remove it.
+- The dropdowns narrow things further: where, which language, how many years of experience, and whether to hide AI-written CVs.
+- **★ Save this search** keeps it all under a name, so next time it's one click.
+- **Start over** clears everything.
+
+If nothing matches, the screen tells you so and offers the words you can remove with one click.
+For experts, **Advanced search** accepts search syntax (`(sap OR oracle) -intern years:>=5`). Click **?** there for examples.
 
 **The AI score (0–100)**
 - Green (< 25) means few signals, orange (25–54) some, red (≥ 55) many.
